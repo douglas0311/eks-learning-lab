@@ -1,0 +1,56 @@
+# KubeCost cost-analyzer values for EKS learning lab
+
+# ---------------------------------
+# Cost Analyzer
+# ---------------------------------
+kubecostProductConfigs:
+  clusterName: "eks-learning-lab-lab-eks"
+  # AWS integration — reads Cost Explorer via IRSA
+  projectID: "490224159848"
+
+# Use ephemeral storage — no PVC for the lab
+persistentVolume:
+  enabled: false
+
+# Lean resource config for t3.small nodes
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+# ---------------------------------
+# Global Prometheus — tell KubeCost to use an external Prometheus.
+# Setting global.prometheus.enabled=false disables the bundled subchart
+# AND skips the prometheus-server-pvc.yaml template (its outer gate).
+# ---------------------------------
+global:
+  prometheus:
+    enabled: false
+    fqdn: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+
+# ---------------------------------
+# Prometheus subchart — fully disabled.
+# Redundant when global.prometheus.enabled=false but explicit for clarity.
+# ---------------------------------
+prometheus:
+  enabled: false
+  server:
+    enabled: false
+    persistentVolume:
+      enabled: false
+
+# Disable Grafana — use the one from kube-prometheus-stack
+grafana:
+  enabled: false
+  fqdn: http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local
+
+# Expose via ClusterIP — access via kubectl port-forward
+service:
+  type: ClusterIP
+
+# IRSA annotation — Terraform will set this via the role ARN output
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: ""   # Set by Terraform locals post-apply

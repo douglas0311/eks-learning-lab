@@ -1,0 +1,80 @@
+# kube-prometheus-stack values for EKS learning lab
+# Sized for 2x t3.small nodes — keeps resource requests lean
+
+# ---------------------------------
+# Prometheus
+# ---------------------------------
+prometheus:
+  prometheusSpec:
+    # Retain 3 days of metrics — sufficient for a lab
+    retention: 3d
+    # Ephemeral storage — no PVC needed, avoids EBS CSI dependency
+    storageSpec: {}
+    resources:
+      requests:
+        cpu: 200m
+        memory: 400Mi
+      limits:
+        memory: 700Mi
+
+# ---------------------------------
+# Grafana
+# ---------------------------------
+grafana:
+  # Use ephemeral storage for the lab — no PVC required
+  persistence:
+    enabled: false
+  adminPassword: "lab-admin-2024"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  # Expose via ClusterIP — access via kubectl port-forward
+  service:
+    type: ClusterIP
+    port: 80
+  # Explicitly wire Prometheus as the default datasource.
+  # kube-prometheus-stack sets this automatically, but being explicit
+  # avoids Grafana showing "No datasource" on first login.
+  additionalDataSources:
+    - name: Prometheus
+      type: prometheus
+      url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+      access: proxy
+      isDefault: false
+      jsonData:
+        timeInterval: "30s"
+
+# ---------------------------------
+# Alertmanager
+# ---------------------------------
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+
+# ---------------------------------
+# Node Exporter + kube-state-metrics
+# Lean resource config for t3.small
+# ---------------------------------
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi

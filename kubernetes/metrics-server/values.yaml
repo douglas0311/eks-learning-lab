@@ -1,0 +1,4 @@
+replicas: 1
+
+# EKS presents valid kubelet certificates; do not disable TLS verification.
+args: []

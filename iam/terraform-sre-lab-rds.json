@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+  "Sid": "RDSOperations",
+  "Effect": "Allow",
+  "Action": [
+    "rds:CreateDBInstance",
+    "rds:DescribeDBInstances",
+    "rds:ModifyDBInstance",
+    "rds:DeleteDBInstance",
+    "rds:AddTagsToResource",
+    "rds:ListTagsForResource",
+    "rds:CreateDBSubnetGroup",
+    "rds:DescribeDBSubnetGroups",
+    "rds:ModifyDBSubnetGroup",
+    "rds:DeleteDBSubnetGroup"
+  ],
+  "Resource": "*"
+    }
+  ]
+}

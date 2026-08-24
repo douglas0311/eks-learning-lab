@@ -1,0 +1,24 @@
+# AWS Load Balancer Controller values for EKS learning lab.
+# clusterName is injected via templatefile() in the observability module.
+clusterName: ${cluster_name}
+region: us-east-1
+vpcId: ${vpc_id}
+
+serviceAccount:
+  # ServiceAccount is created by Terraform (kubernetes_service_account resource)
+  # so the IRSA annotation is set before the controller pod starts.
+  create: false
+  name: aws-load-balancer-controller
+
+# This lab provisions ALBs through Ingress only; avoid implicitly converting
+# Service type LoadBalancer resources into NLBs.
+enableServiceMutatorWebhook: false
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
