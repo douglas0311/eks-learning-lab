@@ -16,8 +16,14 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
 
-      - name: Validate repository
-        run: ls -la
-
       - name: Check Terraform formatting
         run: terraform fmt -check
+
+      - name: Validate terraform
+        run: terraform validate
+
+      - name: Init Terraform
+        run: terraform init
+        
+      - name: TPeroerraform plan
+        run: terraform plan
