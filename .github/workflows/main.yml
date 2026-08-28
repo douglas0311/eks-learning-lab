@@ -8,10 +8,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
       - name: Validate repository
         run: ls -la
 
