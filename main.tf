@@ -43,11 +43,11 @@ module "observability" {
 
   ]
 
-  cluster_name           = module.eks.cluster_name
-  oidc_provider_arn      = module.aws_load_balancer_controller_iam.oidc_provider_arn
-  oidc_provider_hostpath = trimprefix(module.eks.cluster_oidc_issuer_url, "https://")
-  lb_controller_role_arn = module.aws_load_balancer_controller_iam.role_arn
-  vpc_id = module.networking.vpc_id
+  cluster_name             = module.eks.cluster_name
+  oidc_provider_arn        = module.aws_load_balancer_controller_iam.oidc_provider_arn
+  oidc_provider_hostpath   = trimprefix(module.eks.cluster_oidc_issuer_url, "https://")
+  lb_controller_role_arn   = module.aws_load_balancer_controller_iam.role_arn
+  vpc_id                   = module.networking.vpc_id
   prometheus_stack_version = var.prometheus_stack_version
   kubecost_version         = var.kubecost_version
 }
