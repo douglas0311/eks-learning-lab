@@ -19,11 +19,11 @@ jobs:
       - name: Check Terraform formatting
         run: terraform fmt -check
 
-      - name: Validate terraform
-        run: terraform validate
-
-      - name: Init Terraform
+      - name: init Terraform
         run: terraform init
+
+      - name: Validate Terraform
+        run: terraform validate
         
       - name: TPeroerraform plan
         run: terraform plan
