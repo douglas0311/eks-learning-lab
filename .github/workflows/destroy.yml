@@ -1,9 +1,9 @@
-name: CI
+name: Terraform Decommission
 
 on:
   push:
     branches:
-      - main
+      - workflow_dispatch
 
 permissions:
   id-token: write
@@ -29,17 +29,8 @@ jobs:
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
-      - name: Check Terraform formatting
-        run: terraform fmt -check
-
       - name: init Terraform
         run: terraform init
-
-      - name: Validate Terraform
-        run: terraform validate
         
-      - name: Terraform plan
-        run: terraform plan
-
-      - name: Terraform apply
-        run: terraform apply
+      - name: Destroy Terraform
+        run: terraform destroy -auto-approve
