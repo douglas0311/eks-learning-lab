@@ -42,7 +42,7 @@ variable "kubernetes_version" {
 variable "cluster_public_access_cidrs" {
   description = "CIDR ranges permitted to reach the public EKS API endpoint."
   type        = list(string)
-  default     = ["190.171.113.255/32"]
+  default     = ["0.0.0.0/0"]
 }
 
 variable "node_instance_type" {
