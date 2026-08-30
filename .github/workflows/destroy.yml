@@ -1,9 +1,7 @@
 name: Terraform Decommission
 
 on:
-  push:
-    branches:
-      - workflow_dispatch
+  workflow_dispatch
 
 permissions:
   id-token: write
