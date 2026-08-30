@@ -41,3 +41,10 @@ jobs:
 
       - name: Terraform apply
         run: terraform apply -auto-approve
+        
+      - name: Upload Terraform state
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state
+          path: terraform.tfstate
+          retention-days: 7

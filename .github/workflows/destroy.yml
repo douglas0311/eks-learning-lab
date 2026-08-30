@@ -6,6 +6,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  actions: read
 
 jobs:
   build:
@@ -27,8 +28,54 @@ jobs:
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
+      - name: Find latest successful Deploy run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DEPLOY_RUN_ID=$(gh run list \
+            --workflow deploy.yml \
+            --branch main \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+
+          echo "DEPLOY_RUN_ID=$DEPLOY_RUN_ID" >> "$GITHUB_ENV"
+
+      - name: Validate Deploy run
+        run: |
+          if [ -z "$DEPLOY_RUN_ID" ]; then
+            echo "ERROR: No successful Terraform Deploy run was found."
+            exit 1
+          fi
+
+          echo "Using Terraform Deploy run: $DEPLOY_RUN_ID"
+
+      - name: Download Terraform state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "$DEPLOY_RUN_ID" \
+            --name terraform-state \
+            --dir terraform-state
+
+      - name: Restore Terraform state
+        run: |
+          cp terraform-state/terraform.tfstate terraform.tfstate
+
       - name: init Terraform
         run: terraform init
-        
+
+      - name: Validate Terraform state
+        run: |
+          if [ ! -s terraform.tfstate ]; then
+            echo "ERROR: Terraform state is missing or empty."
+            exit 1
+          fi
+
+          echo "Terraform state file found."
+          echo "Resources tracked by Terraform:"
+          terraform state list
+
       - name: Destroy Terraform
         run: terraform destroy -auto-approve
