@@ -1,16 +1,31 @@
 name: Terraform Decommission
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
-  actions: read
+
+concurrency:
+  group: terraform-eks-lab-state
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  AWS_PAGER: ""
+  EXPECTED_ACCOUNT: "490224159848"
+  STATE_BUCKET: douglas-sre-s3-terraform-state
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout repository
@@ -18,64 +33,86 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.4
+          terraform_wrapper: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::490224159848:role/TerraformSRELabGitHubActionsRole
           aws-region: us-east-1
+          role-duration-seconds: 3600
 
       - name: Verify AWS identity
-        run: aws sts get-caller-identity
-
-      - name: Find latest successful Deploy run
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          DEPLOY_RUN_ID=$(gh run list \
-            --workflow deploy.yml \
-            --branch main \
-            --status success \
-            --limit 1 \
-            --json databaseId \
-            --jq '.[0].databaseId')
+          aws sts get-caller-identity > "$RUNNER_TEMP/aws-identity.json"
+          cat "$RUNNER_TEMP/aws-identity.json"
+          jq -e --arg account "$EXPECTED_ACCOUNT" '.Account == $account' "$RUNNER_TEMP/aws-identity.json"
 
-          echo "DEPLOY_RUN_ID=$DEPLOY_RUN_ID" >> "$GITHUB_ENV"
-
-      - name: Validate Deploy run
+      - name: Verify existing state bucket
         run: |
-          if [ -z "$DEPLOY_RUN_ID" ]; then
-            echo "ERROR: No successful Terraform Deploy run was found."
+          if ! aws s3api head-bucket --bucket "$STATE_BUCKET" --expected-bucket-owner "$EXPECTED_ACCOUNT"; then
+            echo "::error::The state bucket is missing or inaccessible. Decommission stopped; this workflow never creates buckets."
+            exit 1
+          fi
+          aws s3api get-bucket-location --bucket "$STATE_BUCKET" --expected-bucket-owner "$EXPECTED_ACCOUNT" \
+            | jq -e '.LocationConstraint == null'
+          aws s3api get-bucket-versioning --bucket "$STATE_BUCKET" --expected-bucket-owner "$EXPECTED_ACCOUNT" \
+            | jq -e '.Status == "Enabled"'
+          aws s3api get-public-access-block --bucket "$STATE_BUCKET" --expected-bucket-owner "$EXPECTED_ACCOUNT" \
+            | jq -e '.PublicAccessBlockConfiguration | .BlockPublicAcls == true and .IgnorePublicAcls == true and .BlockPublicPolicy == true and .RestrictPublicBuckets == true'
+
+      - name: Require existing remote state
+        run: |
+          if ! aws s3api head-object --bucket "$STATE_BUCKET" --key eks-lab/terraform.tfstate --expected-bucket-owner "$EXPECTED_ACCOUNT" > /dev/null; then
+            echo "::error::Remote Terraform state is missing or inaccessible. Refusing to destroy from an empty state."
             exit 1
           fi
 
-          echo "Using Terraform Deploy run: $DEPLOY_RUN_ID"
+      - name: Initialize Terraform S3 backend
+        run: terraform init -input=false -lockfile=readonly
 
-      - name: Download Terraform state
+      - name: Validate Terraform
+        run: terraform validate
+
+      - name: Terraform destroy plan
+        run: terraform plan -destroy -input=false -lock-timeout=5m -out=destroy.tfplan
+
+      - name: Apply Terraform destroy plan
+        id: destroy
+        run: terraform apply -input=false -lock-timeout=5m destroy.tfplan
+
+      - name: Preserve diagnostic state in S3
+        if: ${{ always() && (steps.destroy.outcome == 'success' || steps.destroy.outcome == 'failure') }}
         env:
-          GH_TOKEN: ${{ github.token }}
+          DESTROY_OUTCOME: ${{ steps.destroy.outcome }}
         run: |
-          gh run download "$DEPLOY_RUN_ID" \
-            --name terraform-state \
-            --dir terraform-state
-
-      - name: Restore Terraform state
-        run: |
-          cp terraform-state/terraform.tfstate terraform.tfstate
-
-      - name: init Terraform
-        run: terraform init
-
-      - name: Validate Terraform state
-        run: |
-          if [ ! -s terraform.tfstate ]; then
-            echo "ERROR: Terraform state is missing or empty."
+          umask 077
+          SNAPSHOT="$RUNNER_TEMP/diagnostic.tfstate"
+          # A failed backend write can leave a newer emergency state on the runner.
+          # Preserve it separately; never overwrite the backend with a manual copy.
+          if [[ -s errored.tfstate ]]; then
+            cp errored.tfstate "$SNAPSHOT"
+            STATE_SOURCE="local recovery state (backend persistence failed)"
+          else
+            if ! terraform state pull > "$SNAPSHOT"; then
+              echo "::error::Could not export state for diagnostics. Inspect backend access and Terraform errors."
+              exit 1
+            fi
+            STATE_SOURCE="remote backend snapshot"
+          fi
+          jq -e 'type == "object" and has("version") and has("serial")' "$SNAPSHOT" > /dev/null
+          DESTINATION="s3://$STATE_BUCKET/diagnostics/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/terraform.tfstate"
+          if ! aws s3 cp "$SNAPSHOT" "$DESTINATION" --sse AES256 --only-show-errors; then
+            echo "::error::Diagnostic backup could not be saved to S3. Do not assume recovery state was preserved."
             exit 1
           fi
+          printf 'Destroy outcome: %s\n\nState source: %s\n\nPrivate diagnostic copy: `%s`\n\nPrimary state: `s3://%s/eks-lab/terraform.tfstate`\n' \
+            "$DESTROY_OUTCOME" "$STATE_SOURCE" "$DESTINATION" "$STATE_BUCKET" >> "$GITHUB_STEP_SUMMARY"
 
-          echo "Terraform state file found."
-          echo "Resources tracked by Terraform:"
-          terraform state list
-
-      - name: Destroy Terraform
-        run: terraform destroy -auto-approve
+      - name: Report decommission failure
+        if: ${{ failure() }}
+        run: |
+          echo "::error::Decommission failed. Review the first failed step. Partial infrastructure may remain; use the shared S3 state to diagnose and recover."
+          echo "No rollback or bucket creation is performed. State backup results are shown in the diagnostic step." >> "$GITHUB_STEP_SUMMARY"

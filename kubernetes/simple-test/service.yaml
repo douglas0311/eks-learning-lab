@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: simple-test
+  namespace: simple-test
+spec:
+  type: ClusterIP
+  selector:
+    app: simple-test
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

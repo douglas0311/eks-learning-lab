@@ -1,0 +1,43 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InspectStateBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketPublicAccessBlock"
+      ],
+      "Resource": "arn:aws:s3:::douglas-sre-s3-terraform-state"
+    },
+    {
+      "Sid": "ReadWriteLabState",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::douglas-sre-s3-terraform-state/eks-lab/terraform.tfstate"
+    },
+    {
+      "Sid": "ManageStateLock",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::douglas-sre-s3-terraform-state/eks-lab/terraform.tfstate.tflock"
+    },
+    {
+      "Sid": "WriteDiagnosticBackups",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::douglas-sre-s3-terraform-state/diagnostics/*"
+    }
+  ]
+}
