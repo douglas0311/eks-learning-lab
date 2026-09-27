@@ -1,0 +1,143 @@
+name: Empty S3 bucket
+
+on:
+  workflow_dispatch:
+    inputs:
+      bucket_suffix:
+        description: "Bucket suffix to empty; douglas-sre- is added automatically"
+        required: true
+        type: string
+
+      confirm_bucket_name:
+        description: "WARNING: This job will permanently empty the bucket, deleting all objects, previous versions and delete markers. Type the full bucket name to confirm."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: s3-bucket-douglas-sre-${{ inputs.bucket_suffix }}
+  cancel-in-progress: false
+
+jobs:
+  empty_bucket:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    env:
+      BUCKET_PREFIX: douglas-sre-
+      BUCKET_SUFFIX: ${{ inputs.bucket_suffix }}
+      CONFIRM_BUCKET_NAME: ${{ inputs.confirm_bucket_name }}
+      AWS_REGION: us-east-1
+      AWS_PAGER: ""
+      EXPECTED_ACCOUNT: "490224159848"
+
+    steps:
+      - name: Validate bucket name
+        run: |
+          BUCKET_NAME="${BUCKET_PREFIX}${BUCKET_SUFFIX}"
+          if [[ ${#BUCKET_NAME} -gt 63 || ! "$BUCKET_SUFFIX" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+            echo "::error::Use a suffix containing lowercase letters, numbers or hyphens; start and end with a letter or number. The full bucket name must not exceed 63 characters."
+            exit 1
+          fi
+          case "$BUCKET_NAME" in
+            *-s3alias|*--ol-s3|*--x-s3|*--table-s3)
+              echo "::error::The bucket name uses a reserved S3 suffix."
+              exit 1
+              ;;
+          esac
+          if [[ "$CONFIRM_BUCKET_NAME" != "$BUCKET_NAME" ]]; then
+            echo "::error::Confirmation does not match the full bucket name. No AWS actions will be performed."
+            exit 1
+          fi
+          echo "::warning::This job will permanently empty the bucket, deleting all objects, previous versions and delete markers."
+          echo "BUCKET_NAME=$BUCKET_NAME" >> "$GITHUB_ENV"
+          echo "Bucket name: $BUCKET_NAME"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::490224159848:role/GitHubActionsS3LabRole
+          aws-region: us-east-1
+          allowed-account-ids: "490224159848"
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Verify bucket ownership and region
+        run: |
+          # Missing buckets and denied access both stop the workflow.
+          aws s3api head-bucket --bucket "$BUCKET_NAME" --expected-bucket-owner "$EXPECTED_ACCOUNT"
+          aws s3api get-bucket-location --bucket "$BUCKET_NAME" --expected-bucket-owner "$EXPECTED_ACCOUNT" \
+            > "$RUNNER_TEMP/bucket-location.json"
+          # S3 returns null for us-east-1.
+          if ! jq -e '.LocationConstraint == null' "$RUNNER_TEMP/bucket-location.json"; then
+            echo "::error::The bucket is not in us-east-1. No deletion will be attempted."
+            exit 1
+          fi
+
+      - name: Permanently empty bucket and verify
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          import subprocess
+          from urllib.parse import unquote
+
+          bucket = os.environ["BUCKET_NAME"]
+          owner = os.environ["EXPECTED_ACCOUNT"]
+
+          def s3(operation, *arguments):
+              result = subprocess.run(
+                  ["aws", "s3api", operation, "--bucket", bucket,
+                   "--expected-bucket-owner", owner, "--region", os.environ["AWS_REGION"],
+                   "--output", "json", *arguments],
+                  check=True, capture_output=True, text=True,
+              )
+              return json.loads(result.stdout)
+
+          deleted = 0
+          payload_path = os.path.join(os.environ["RUNNER_TEMP"], "delete-batch.json")
+          # Re-read the first remaining page after each batch, avoiding stale pagination markers.
+          # Bound the loop in case another client keeps writing to this bucket.
+          for batch_number in range(1001):
+              page = s3("list-object-versions", "--no-paginate", "--encoding-type", "url")
+              if not isinstance(page.get("IsTruncated"), bool):
+                  raise RuntimeError("Cannot verify listing completeness; stopping.")
+              entries = page.get("Versions", []) + page.get("DeleteMarkers", [])
+              if not entries:
+                  if page["IsTruncated"]:
+                      raise RuntimeError("Empty but truncated listing; stopping.")
+                  # Confirm that the bucket itself still exists after the final empty listing.
+                  s3("get-bucket-location")
+                  with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+                      summary.write(f"Bucket `{bucket}` is empty. Deleted {deleted} version/marker entries. "
+                                    "The bucket, versioning and lifecycle configuration were retained.\n")
+                  print(f"Verified empty bucket: {bucket}")
+                  break
+              if batch_number == 1000:
+                  raise RuntimeError("Batch limit reached. Stop external writers and inspect before retrying.")
+              objects = [{"Key": unquote(item["Key"]), "VersionId": item["VersionId"]}
+                         for item in entries]
+              if len(objects) > 1000:
+                  raise RuntimeError("Unexpected batch size; stopping.")
+              with open(payload_path, "w") as payload:
+                  json.dump({"Objects": objects, "Quiet": True}, payload)
+              result = s3("delete-objects", "--delete", "file://" + payload_path)
+              # S3 can report individual failures even when the API request succeeds.
+              if result.get("Errors"):
+                  codes = sorted({error.get("Code", "Unknown") for error in result["Errors"]})
+                  raise RuntimeError(f"Partial deletion failure: {codes}. Some entries may already be deleted.")
+              deleted += len(objects)
+              print(f"Batch {batch_number + 1}: deleted {len(objects)} version/marker entries.")
+          PYTHON
+
+      - name: Report failure
+        if: ${{ failure() }}
+        run: |
+          echo "::error::Emptying was not confirmed. Inspect the failed step. If deletion started, some entries may already be permanently deleted; there is no automatic rollback."
+          echo "The workflow does not delete the bucket. Stop external writers before retrying." >> "$GITHUB_STEP_SUMMARY"
