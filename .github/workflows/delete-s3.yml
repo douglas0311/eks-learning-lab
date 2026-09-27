@@ -1,0 +1,118 @@
+name: Delete empty S3 bucket
+
+on:
+  workflow_dispatch:
+    inputs:
+      bucket_suffix:
+        description: "Suffix of the empty bucket to delete; douglas-sre- is added automatically"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: s3-bucket-douglas-sre-${{ inputs.bucket_suffix }}
+  cancel-in-progress: false
+
+jobs:
+  delete_bucket:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    env:
+      BUCKET_PREFIX: douglas-sre-
+      BUCKET_SUFFIX: ${{ inputs.bucket_suffix }}
+      AWS_REGION: us-east-1
+      AWS_PAGER: ""
+      EXPECTED_ACCOUNT: "490224159848"
+
+    steps:
+      - name: Validate bucket name
+        run: |
+          BUCKET_NAME="${BUCKET_PREFIX}${BUCKET_SUFFIX}"
+          if [[ ${#BUCKET_NAME} -gt 63 || ! "$BUCKET_SUFFIX" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+            echo "::error::Use a suffix containing lowercase letters, numbers or hyphens; start and end with a letter or number. The full bucket name must not exceed 63 characters."
+            exit 1
+          fi
+          case "$BUCKET_NAME" in
+            *-s3alias|*--ol-s3|*--x-s3|*--table-s3)
+              echo "::error::The bucket name uses a reserved S3 suffix."
+              exit 1
+              ;;
+          esac
+          echo "BUCKET_NAME=$BUCKET_NAME" >> "$GITHUB_ENV"
+          echo "Bucket name: $BUCKET_NAME"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::490224159848:role/GitHubActionsS3LabRole
+          aws-region: us-east-1
+          allowed-account-ids: "490224159848"
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Verify bucket ownership and region
+        run: |
+          # Missing buckets and denied access both stop the workflow.
+          aws s3api head-bucket --bucket "$BUCKET_NAME" --expected-bucket-owner "$EXPECTED_ACCOUNT"
+          aws s3api get-bucket-location --bucket "$BUCKET_NAME" --expected-bucket-owner "$EXPECTED_ACCOUNT" \
+            > "$RUNNER_TEMP/bucket-location.json"
+          # S3 returns null for us-east-1.
+          if ! jq -e '.LocationConstraint == null' "$RUNNER_TEMP/bucket-location.json"; then
+            echo "::error::The bucket is not in us-east-1. No deletion will be attempted."
+            exit 1
+          fi
+
+      - name: Verify that the bucket is completely empty
+        run: |
+          # One page is sufficient: any version, marker or additional page blocks deletion.
+          aws s3api list-object-versions \
+            --bucket "$BUCKET_NAME" \
+            --expected-bucket-owner "$EXPECTED_ACCOUNT" \
+            --encoding-type url \
+            --no-paginate \
+            --output json > "$RUNNER_TEMP/bucket-versions.json"
+          if ! jq -e '((.Versions // []) | length) == 0 and ((.DeleteMarkers // []) | length) == 0 and (.IsTruncated == false)' "$RUNNER_TEMP/bucket-versions.json"; then
+            echo "::error::The bucket contains objects, versions or delete markers, or emptiness could not be verified. Empty it separately before running this workflow."
+            exit 1
+          fi
+
+      - name: Delete empty bucket
+        id: delete
+        run: |
+          # S3 rejects the request if an object was added after the empty check.
+          aws s3api delete-bucket \
+            --bucket "$BUCKET_NAME" \
+            --expected-bucket-owner "$EXPECTED_ACCOUNT" \
+            --region "$AWS_REGION"
+          echo "deleted=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify bucket deletion
+        run: |
+          if aws s3api head-bucket --bucket "$BUCKET_NAME" --expected-bucket-owner "$EXPECTED_ACCOUNT" > /dev/null 2> "$RUNNER_TEMP/deletion-check-error.txt"; then
+            echo "::error::The bucket is still accessible after the delete request."
+            exit 1
+          fi
+          if ! grep -Eq '\(404\).*HeadBucket' "$RUNNER_TEMP/deletion-check-error.txt"; then
+            cat "$RUNNER_TEMP/deletion-check-error.txt" >&2
+            echo "::error::Deletion could not be verified. A permission or connection error is not proof of deletion."
+            exit 1
+          fi
+          printf 'Deleted empty bucket `%s` in `%s`. No objects or versions were deleted by this workflow.\n' "$BUCKET_NAME" "$AWS_REGION" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report failure
+        if: ${{ failure() }}
+        env:
+          DELETE_SUCCEEDED: ${{ steps.delete.outputs.deleted }}
+        run: |
+          if [[ "$DELETE_SUCCEEDED" == "true" ]]; then
+            echo "::error::AWS accepted bucket deletion, but verification failed. Inspect AWS before retrying."
+          else
+            echo "::error::The workflow stopped without confirming bucket deletion. Inspect the failed step; this workflow never empties buckets."
+          fi
