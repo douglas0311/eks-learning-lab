@@ -63,10 +63,15 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::490224159848:role/GitHubActionsS3LabRole
           aws-region: us-east-1
-          allowed-account-ids: "490224159848"
 
       - name: Verify AWS identity
-        run: aws sts get-caller-identity
+        run: |
+          aws sts get-caller-identity > "$RUNNER_TEMP/aws-identity.json"
+          cat "$RUNNER_TEMP/aws-identity.json"
+          if ! jq -e --arg account "$EXPECTED_ACCOUNT" '.Account == $account' "$RUNNER_TEMP/aws-identity.json"; then
+            echo "::error::Authenticated AWS account does not match the expected account."
+            exit 1
+          fi
 
       - name: Verify bucket ownership and region
         run: |
@@ -86,19 +91,33 @@ jobs:
           import json
           import os
           import subprocess
+          import sys
           from urllib.parse import unquote
 
           bucket = os.environ["BUCKET_NAME"]
           owner = os.environ["EXPECTED_ACCOUNT"]
 
           def s3(operation, *arguments):
+              print(f"Calling S3 operation: {operation}", flush=True)
               result = subprocess.run(
                   ["aws", "s3api", operation, "--bucket", bucket,
                    "--expected-bucket-owner", owner, "--region", os.environ["AWS_REGION"],
                    "--output", "json", *arguments],
-                  check=True, capture_output=True, text=True,
+                  capture_output=True, text=True,
               )
-              return json.loads(result.stdout)
+              if result.returncode != 0:
+                  print(result.stderr, file=sys.stderr, flush=True)
+                  raise RuntimeError(f"AWS CLI {operation} failed with exit code {result.returncode}.")
+              # Quiet DeleteObjects can succeed without emitting JSON.
+              if not result.stdout.strip() and operation == "delete-objects":
+                  return {}
+              try:
+                  response = json.loads(result.stdout)
+              except json.JSONDecodeError as error:
+                  raise RuntimeError(f"AWS CLI {operation} returned missing or invalid JSON; inspect AWS before retrying.") from error
+              if not isinstance(response, dict):
+                  raise RuntimeError(f"AWS CLI {operation} returned an unexpected response type.")
+              return response
 
           deleted = 0
           payload_path = os.path.join(os.environ["RUNNER_TEMP"], "delete-batch.json")
