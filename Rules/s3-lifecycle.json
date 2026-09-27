@@ -1,10 +1,10 @@
 {
   "Rules": [
     {
-      "ID": "practica-versiones-anteriores-30-dias",
+      "ID": "noncurrent-versions-30-days",
       "Status": "Enabled",
       "Filter": {
-        "Prefix": "practica/"
+        "Prefix": ""
       },
       "NoncurrentVersionExpiration": {
         "NoncurrentDays": 30
