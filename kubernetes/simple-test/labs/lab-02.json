@@ -8,11 +8,11 @@
             "args": null,
             "resources": {
               "requests": {
-                "cpu": "25m",
+                "cpu": "4",
                 "memory": "32Mi"
               },
               "limits": {
-                "cpu": "100m",
+                "cpu": "4",
                 "memory": "64Mi"
               }
             }

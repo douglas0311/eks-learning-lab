@@ -4,11 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       configuration:
-        description: "Application configuration to apply"
+        description: "Select a lab to activate, or baseline to restore the healthy configuration"
         required: true
         type: choice
         options:
           - lab-01
+          - lab-02
           - baseline
 
 permissions:
@@ -77,7 +78,7 @@ jobs:
           IMAGE=$(jq -r '.spec.template.spec.containers[0].image' "$RUNNER_TEMP/current.json")
           [[ "$IMAGE" =~ ^$EXPECTED_ACCOUNT\.dkr\.ecr\.$AWS_REGION\.amazonaws\.com/simple-test@sha256:[a-f0-9]{64}$ ]]
           case "$CONFIGURATION" in
-            lab-01)
+            lab-01|lab-02)
               kubectl -n simple-test rollout status deployment/simple-test --timeout=60s
               ;;
             baseline) ;;
