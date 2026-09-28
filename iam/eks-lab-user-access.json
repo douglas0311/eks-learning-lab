@@ -1,0 +1,42 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateLabUserEntry",
+      "Effect": "Allow",
+      "Action": "eks:CreateAccessEntry",
+      "Resource": "arn:aws:eks:us-east-1:490224159848:cluster/eks-learning-lab-lab-eks",
+      "Condition": {
+        "ArnEquals": {
+          "eks:principalArn": "arn:aws:iam::490224159848:user/day7-cli-user"
+        }
+      }
+    },
+    {
+      "Sid": "ManageLabUserEntry",
+      "Effect": "Allow",
+      "Action": [
+        "eks:DescribeAccessEntry",
+        "eks:DeleteAccessEntry",
+        "eks:ListAssociatedAccessPolicies",
+        "eks:TagResource",
+        "eks:UntagResource"
+      ],
+      "Resource": "arn:aws:eks:us-east-1:490224159848:access-entry/eks-learning-lab-lab-eks/user/490224159848/day7-cli-user/*"
+    },
+    {
+      "Sid": "ManageLabUserReadPolicy",
+      "Effect": "Allow",
+      "Action": [
+        "eks:AssociateAccessPolicy",
+        "eks:DisassociateAccessPolicy"
+      ],
+      "Resource": "arn:aws:eks:us-east-1:490224159848:access-entry/eks-learning-lab-lab-eks/user/490224159848/day7-cli-user/*",
+      "Condition": {
+        "ArnEquals": {
+          "eks:policyArn": "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminViewPolicy"
+        }
+      }
+    }
+  ]
+}
