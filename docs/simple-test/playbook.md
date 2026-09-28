@@ -43,12 +43,12 @@ Las etiquetas inmutables impiden sobrescribir una etiqueta existente. El workflo
 
 ## 3. Preparar el rol AWS una vez
 
-El rol propuesto es `GitHubActionsSimpleTestRole`. Se reutiliza el documento de confianza OIDC ya existente en el laboratorio, cuyo nombre contiene S3 pero cuyo contenido autoriza a GitHub a asumir un rol desde `main`. Revisa su contenido antes de usarlo: debe conservar el subject personalizado de este repositorio, no sustituirlo por un ejemplo genérico.
+El rol es `GitHubActionsSimpleTestRole`. Su documento de confianza OIDC dedicado permite a GitHub asumirlo desde `main` de este repositorio. Conserva el subject personalizado; no lo sustituyas por un ejemplo genérico. ECR y este rol ya fueron creados durante la preparación inicial; los comandos de creación se conservan como referencia para una cuenta nueva.
 
 ```bash
-cat iam/github-actions-s3-trust.json
+cat iam/simple-test-trust.json
 aws iam create-role --role-name GitHubActionsSimpleTestRole \
-  --assume-role-policy-document file://iam/github-actions-s3-trust.json \
+  --assume-role-policy-document file://iam/simple-test-trust.json \
   --description "GitHub Actions role for simple-test deployment" \
   --profile default
 aws iam put-role-policy --role-name GitHubActionsSimpleTestRole \
@@ -59,34 +59,38 @@ aws iam put-role-policy --role-name GitHubActionsSimpleTestRole \
 
 Si el rol ya existe, inspecciónalo antes de continuar; no intentes crearlo repetidamente. La política permite publicar en el ECR `simple-test` y describir este clúster. No permite crear ECR, EKS ni roles. `--profile default` selecciona credenciales locales; GitHub usa OIDC, sin access keys guardadas en el workflow.
 
-## 4. Autorizar Kubernetes en cada clúster nuevo
+## 4. Preparación automática del clúster
 
-AWS IAM y Kubernetes tienen autorizaciones diferentes. Un administrador con permisos EKS crea la entrada de acceso, que enlaza el rol con el grupo `simple-test-deployers`:
+`simple-test-access.tf` declara cuatro recursos que **Terraform Provision** prepara en cada clúster:
 
-```bash
-aws eks create-access-entry --cluster-name eks-learning-lab-lab-eks \
-  --principal-arn arn:aws:iam::490224159848:role/GitHubActionsSimpleTestRole \
-  --type STANDARD --kubernetes-groups simple-test-deployers \
-  --region us-east-1 --profile default
-```
+- Entrada EKS para `GitHubActionsSimpleTestRole`, vinculada al grupo `simple-test-deployers`.
+- Namespace `simple-test`.
+- Role con permisos para instalar y consultar esta aplicación.
+- RoleBinding que conecta el grupo con el Role.
 
-Si la entrada ya existe, revísala mediante `aws eks describe-access-entry` con el mismo clúster y principal. Se requiere autenticación EKS `API` o `API_AND_CONFIG_MAP`; el Terraform del laboratorio configura esta última.
+Terraform lee las reglas desde `kubernetes/simple-test/rbac.yaml`. No apliques esos manifiestos manualmente después: Terraform administra esta preparación. El Deployment, Service y HPA pertenecen al job de la aplicación.
 
-A continuación, **con una identidad que ya tenga administración en Kubernetes**, prepara el namespace y RBAC:
+El rol de Provision necesita la política adicional siguiente. Ya se aplicó durante la preparación inicial; el comando sirve de referencia:
 
 ```bash
-aws eks update-kubeconfig --name eks-learning-lab-lab-eks \
-  --region us-east-1 --profile default
-kubectl config current-context
-kubectl auth can-i create namespaces
-kubectl apply -f kubernetes/simple-test/namespace.yaml
-kubectl apply -f kubernetes/simple-test/rbac.yaml
-kubectl get --raw /apis/metrics.k8s.io/v1beta1/nodes
+aws iam put-role-policy --role-name TerraformSRELabGitHubActionsRole \
+  --policy-name TerraformSimpleTestAccess \
+  --policy-document file://iam/simple-test-bootstrap-policy.json \
+  --profile default
 ```
 
-Si `can-i` responde `no`, detente: obtener kubeconfig no concede permisos. El usuario local no necesariamente es administrador; el rol que creó el clúster tiene el acceso inicial configurado por Terraform. Debemos resolver el acceso de tu identidad antes de aplicar estos archivos. No asumas que puedes asumir ese rol desde tu usuario: su confianza OIDC puede permitir solo GitHub.
+Esta política limita la creación de entradas al rol de simple-test en este clúster. No concede acceso Kubernetes directamente: la entrada EKS y el RoleBinding deben existir también.
 
-RBAC limita el workflow al namespace `simple-test`; no permite crear namespaces ni borrar recursos. La entrada de acceso, el namespace y RBAC deben recrearse después de destruir y volver a crear EKS. IAM y ECR permanecen. Metrics Server debe estar funcionando para que HPA pueda calcular CPU; CloudWatch por sí solo no lo sustituye.
+**Orden para el clúster actual:** publica los cambios, ejecuta Terraform Provision y espera que termine correctamente; después ejecuta Deploy simple-test. No hace falta Decommission para añadir estos cuatro recursos al clúster que ya funciona. Revisa el plan: si aparecen cambios no esperados, detente para investigarlos.
+
+En futuros laboratorios: Provision reconstruye namespace/RBAC/entrada EKS; ECR y el rol IAM persisten. Metrics Server debe estar funcionando para que el HPA calcule CPU.
+
+Con tu usuario de diagnóstico puedes verificar la preparación:
+
+```bash
+kubectl get namespace simple-test
+kubectl -n simple-test get role,rolebinding
+```
 
 ## 5. Prueba local opcional del contenedor
 
@@ -171,13 +175,13 @@ kubectl -n simple-test describe hpa simple-test
 
 `ImagePullBackOff`: comprueba imagen y permiso ECR del rol de los nodos. `Pending`: revisa capacidad y eventos. HPA con métricas desconocidas: revisa Metrics Server, requests y Pods Ready. `Forbidden`: revisa identidad, entrada de acceso y RBAC.
 
-Para retirar solo esta aplicación, una identidad administradora puede ejecutar, **después de confirmar que este namespace contiene únicamente el laboratorio**:
+Para retirar solo esta aplicación, una identidad administradora puede ejecutar desde la raíz del repositorio:
 
 ```bash
-kubectl delete namespace simple-test
+kubectl delete -k kubernetes/simple-test
 ```
 
-Esto también elimina su RBAC. Para cerrar el laboratorio completo, usa el procedimiento Terraform Decommission ya existente. El repositorio ECR y el rol preparados manualmente no pertenecen al estado Terraform y no se eliminan con ese destroy.
+Esto elimina Deployment, Service y HPA, conservando el namespace y RBAC administrados por Terraform. Tu usuario de diagnóstico tiene acceso de lectura, por lo que no puede ejecutar esta eliminación. Para cerrar el laboratorio completo, usa Terraform Decommission; este también elimina el namespace/RBAC y la entrada de acceso del rol de la app. El repositorio ECR y el rol preparados manualmente no pertenecen al estado Terraform y no se eliminan con ese destroy.
 
 ## Preguntas de comprobación
 

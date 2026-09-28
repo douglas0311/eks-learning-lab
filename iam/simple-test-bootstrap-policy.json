@@ -1,0 +1,48 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateSimpleTestEntry",
+      "Effect": "Allow",
+      "Action": "eks:CreateAccessEntry",
+      "Resource": "arn:aws:eks:us-east-1:490224159848:cluster/eks-learning-lab-lab-eks",
+      "Condition": {
+        "ArnEquals": {
+          "eks:principalArn": "arn:aws:iam::490224159848:role/GitHubActionsSimpleTestRole"
+        },
+        "StringEquals": {
+          "eks:accessEntryType": "STANDARD"
+        },
+        "ForAllValues:StringEquals": {
+          "eks:kubernetesGroups": [
+            "simple-test-deployers"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "MaintainSimpleTestEntry",
+      "Effect": "Allow",
+      "Action": [
+        "eks:DescribeAccessEntry",
+        "eks:DeleteAccessEntry",
+        "eks:TagResource",
+        "eks:UntagResource"
+      ],
+      "Resource": "arn:aws:eks:us-east-1:490224159848:access-entry/eks-learning-lab-lab-eks/role/490224159848/GitHubActionsSimpleTestRole/*"
+    },
+    {
+      "Sid": "UpdateSimpleTestGroup",
+      "Effect": "Allow",
+      "Action": "eks:UpdateAccessEntry",
+      "Resource": "arn:aws:eks:us-east-1:490224159848:access-entry/eks-learning-lab-lab-eks/role/490224159848/GitHubActionsSimpleTestRole/*",
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "eks:kubernetesGroups": [
+            "simple-test-deployers"
+          ]
+        }
+      }
+    }
+  ]
+}
