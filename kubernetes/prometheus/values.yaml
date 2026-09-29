@@ -21,6 +21,12 @@ prometheus:
 # Grafana
 # ---------------------------------
 grafana:
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: monitoring
   # Use ephemeral storage for the lab — no PVC required
   persistence:
     enabled: false

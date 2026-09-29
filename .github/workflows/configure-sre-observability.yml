@@ -1,0 +1,86 @@
+name: Configure SRE observability
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# Serialize with Terraform Provision/Decommission for this lab.
+concurrency:
+  group: terraform-eks-lab-state
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  AWS_PAGER: ""
+  EXPECTED_ACCOUNT: "490224159848"
+  CLUSTER_NAME: eks-learning-lab-lab-eks
+  ECR_REPOSITORY: simple-test
+  KUBECONFIG: ${{ github.workspace }}/.simple-test-kubeconfig
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::490224159848:role/TerraformSRELabGitHubActionsRole
+          aws-region: us-east-1
+
+      - name: Verify AWS prerequisites
+        run: |
+          aws sts get-caller-identity | jq -e --arg account "$EXPECTED_ACCOUNT" '.Account == $account'
+          aws eks describe-cluster --name "$CLUSTER_NAME" > "$RUNNER_TEMP/cluster.json"
+          jq -e '.cluster.status == "ACTIVE"' "$RUNNER_TEMP/cluster.json"
+          CLUSTER_VERSION=$(jq -r '.cluster.version' "$RUNNER_TEMP/cluster.json")
+          [[ "$CLUSTER_VERSION" =~ ^1\.[0-9]+$ ]]
+          echo "CLUSTER_VERSION=$CLUSTER_VERSION" >> "$GITHUB_ENV"
+
+      - name: Install matching kubectl
+        run: |
+          KUBECTL_VERSION=$(curl -fsSL "https://dl.k8s.io/release/stable-$CLUSTER_VERSION.txt")
+          [[ "$KUBECTL_VERSION" =~ ^v1\.[0-9]+\.[0-9]+$ ]]
+          mkdir -p "$RUNNER_TEMP/kubectl-bin"
+          cd "$RUNNER_TEMP/kubectl-bin"
+          curl -fsSLO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
+          curl -fsSLO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl.sha256"
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+          chmod +x kubectl
+          echo "$RUNNER_TEMP/kubectl-bin" >> "$GITHUB_PATH"
+
+      - name: Install lab dashboard and alerts
+        run: |
+          aws eks update-kubeconfig --name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG"
+          kubectl -n simple-test rollout status deployment/simple-test --timeout=60s
+          kubectl -n monitoring rollout status deployment/kube-prometheus-stack-grafana --timeout=120s
+          kubectl apply --dry-run=server -f kubernetes/sre-observability/
+          kubectl apply -f kubernetes/sre-observability/
+
+      - name: Verify metrics rules and Grafana dashboard
+        run: |
+          kubectl -n monitoring port-forward service/kube-prometheus-stack-prometheus 19090:9090 > "$RUNNER_TEMP/prometheus-forward.log" 2>&1 &
+          PROM_PID=$!
+          kubectl -n monitoring port-forward service/kube-prometheus-stack-grafana 13000:80 > "$RUNNER_TEMP/grafana-forward.log" 2>&1 &
+          GRAFANA_PID=$!
+          trap 'kill "$PROM_PID" "$GRAFANA_PID" 2>/dev/null || true' EXIT
+          GRAFANA_USER=$(kubectl -n monitoring get secret kube-prometheus-stack-grafana -o jsonpath='{.data.admin-user}' | base64 --decode)
+          GRAFANA_PASSWORD=$(kubectl -n monitoring get secret kube-prometheus-stack-grafana -o jsonpath='{.data.admin-password}' | base64 --decode)
+          echo "::add-mask::$GRAFANA_USER"
+          echo "::add-mask::$GRAFANA_PASSWORD"
+          export GRAFANA_USER GRAFANA_PASSWORD
+          python3 scripts/sre/verify-observability.py
+          echo 'Dashboard: SRE Lab — simple-test and nodes. Alerts available in Prometheus; no external notifications configured.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove temporary kubeconfig
+        if: ${{ always() }}
+        run: rm -f "$KUBECONFIG"
