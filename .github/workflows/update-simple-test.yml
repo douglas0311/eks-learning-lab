@@ -75,8 +75,8 @@ jobs:
           kubectl auth can-i patch deployments.apps -n simple-test | grep -qx yes
           kubectl -n simple-test get deployment simple-test -o json > "$RUNNER_TEMP/current.json"
           jq -e '.spec.template.spec.containers | length == 1' "$RUNNER_TEMP/current.json"
-          if jq -e '.metadata.annotations["sre-lab/active"] == "lab-03"' "$RUNNER_TEMP/current.json" > /dev/null; then
-            echo "::error::Use Run SRE lab 03 with restore to recover the active node exercise first."
+          if jq -e '.metadata.annotations["sre-lab/active"] == "lab-03" or .metadata.annotations["sre-lab/active"] == "lab-04"' "$RUNNER_TEMP/current.json" > /dev/null; then
+            echo "::error::Use the active Run SRE lab workflow with restore before updating the application."
             exit 1
           fi
           IMAGE=$(jq -r '.spec.template.spec.containers[0].image' "$RUNNER_TEMP/current.json")
