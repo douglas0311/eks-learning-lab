@@ -1,0 +1,24 @@
+# Diagnostic access for the lab operator, scoped to this application namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lab-operator-exec
+  namespace: simple-test
+rules:
+  - apiGroups: [""]
+    resources: [pods/exec]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lab-operator-exec
+  namespace: simple-test
+subjects:
+  - kind: User
+    name: arn:aws:iam::490224159848:user/day7-cli-user
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: lab-operator-exec
+  apiGroup: rbac.authorization.k8s.io
