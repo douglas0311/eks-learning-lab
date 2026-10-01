@@ -20,6 +20,21 @@ def fixtures(active=None):
 
 
 class Lab04Tests(unittest.TestCase):
+    def test_ready_addresses_handles_empty_endpoint_slices(self):
+        for empty_slice in ({}, {'endpoints': None}, {'endpoints': []}):
+            with self.subTest(empty_slice=empty_slice), mock.object(lab04, 'read', return_value={'items': [empty_slice]}):
+                self.assertEqual(lab04.ready_addresses(), 0)
+
+    def test_ready_addresses_counts_only_eligible_addresses(self):
+        slices = {'items': [{'endpoints': None}, {'endpoints': [
+            {'addresses': ['10.0.0.1'], 'conditions': {'ready': True}},
+            {'addresses': ['10.0.0.2'], 'conditions': {'ready': False}},
+            {'addresses': ['10.0.0.3'], 'conditions': {'ready': True, 'terminating': True}},
+            {'addresses': ['10.0.0.4'], 'conditions': {}},
+        ]}]}
+        with mock.object(lab04, 'read', return_value=slices):
+            self.assertEqual(lab04.ready_addresses(), 2)
+
     def test_activate_records_before_change_and_confines_patch(self):
         dep, svc, _ = fixtures()
         events = []

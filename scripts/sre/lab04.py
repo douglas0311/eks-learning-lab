@@ -15,7 +15,7 @@ URL = 'http://simple-test.simple-test.svc.cluster.local:80/'
 
 def ready_addresses():
     slices = read('-n', NS, 'get', 'endpointslices', '-l', 'kubernetes.io/service-name=simple-test')
-    return sum(len(e.get('addresses', [])) for s in slices['items'] for e in s.get('endpoints', [])
+    return sum(len(e.get('addresses', [])) for s in slices['items'] for e in (s.get('endpoints') or [])
                if e.get('conditions', {}).get('ready') is not False
                and not e.get('conditions', {}).get('terminating', False))
 
