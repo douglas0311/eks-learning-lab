@@ -1,8 +1,10 @@
-# EKS Learning Lab
+# AWS Cloud Engineering Lab
 
-A hands-on SRE lab for provisioning AWS infrastructure, deploying a containerized application, and investigating controlled Kubernetes failures using logs, events, and metrics.
+A hands-on AWS engineering portfolio covering infrastructure automation, Kubernetes operations, and evidence-based incident investigation. The published track currently focuses on EKS, with Bedrock work being prepared separately.
 
 The goal is to practice an evidence-based investigation: identify the symptom, compare healthy and unhealthy behavior, form a hypothesis, and validate recovery.
+
+Start with the [engineering portfolio](docs/README.md) for investigation notes and root cause analyses, or the [application playbook](docs/simple-test/playbook.md) to run the environment. See [Bedrock work status](docs/bedrock/README.md) for the unpublished track.
 
 ## What this project demonstrates
 
@@ -40,7 +42,8 @@ flowchart LR
 | Lab 01 | Container startup failures and comparing Pod configuration | Investigated in EKS |
 | Lab 02 | CPU requests versus node allocatable capacity | Investigated and recovered in EKS |
 | Lab 03 | Scheduling constraints and correlating events with dashboards | Investigated and recovered in EKS |
-| Lab 04 | Internal application connectivity | Prepared for the next exercise |
+| Lab 04 | Internal application connectivity | Activated; learner investigation open |
+| INC-001 | Kubernetes exec authorization | Diagnosed; correction published, operator verification pending in notes |
 
 Exercises are intended to preserve the investigation experience. The learner-facing guides explain how to start each scenario without giving away its root cause.
 
@@ -55,6 +58,8 @@ Exercises are intended to preserve the investigation experience. The learner-fac
 7. Run **Terraform Decommission** when the session is complete.
 
 These are manually triggered workflows. The initial application deployment and the update/scenario workflows have different purposes; use the corresponding guide when an application already exists.
+
+Completed case studies: [Lab 01](docs/labs/lab-01/rca.md), [Lab 02](docs/labs/lab-02/rca.md), [Lab 03](docs/labs/lab-03/rca.md), and [diagnostic authorization](docs/incidents/INC-001-pods-exec/rca.md). These distinguish observed recovery from pending checks.
 
 ## Playbooks and source
 
@@ -79,3 +84,9 @@ Review the workflows, Terraform inputs, IAM trust policies, and backend configur
 AWS resources incur charges while active. Decommission the lab after use and review persistent resources such as the state bucket and container registry separately. Preserve Terraform state for recovery and do not commit credentials or state files.
 
 This is an educational environment, not a production reference architecture. The emphasis is repeatable practice, understandable automation, and evidence-based troubleshooting.
+
+## Portfolio scope
+
+Douglas conducts the lab investigations and develops evidence-backed hypotheses. AI-assisted tooling supports lab automation, technical review, and documentation. These records describe controlled exercises, not production incidents. The [curriculum](docs/curriculum.md) tracks completed and planned topics.
+
+The GitHub project name is independent of existing AWS resource names. See the [naming migration notes](docs/repository-naming.md) before changing repository identity or OIDC trust.

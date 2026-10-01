@@ -1,64 +1,62 @@
-# Qué hace Kubernetes para ejecutar simple-test
+# How Kubernetes runs simple test
 
-## Del archivo al contenedor
+This guide follows the application from its manifests to a running container and explains which component owns each decision. It also describes the limits of the deployment workflow's health checks.
+
+## From source to workload
 
 ```mermaid
 flowchart TD
-  A[GitHub Actions: construye y prueba] --> B[ECR: imagen con digest]
-  A --> C[API server: recibe Deployment, Service y HPA]
-  C --> D[Deployment controller crea ReplicaSet]
-  D --> E[ReplicaSet solicita dos Pods]
-  E --> F[Scheduler asigna nodos]
-  F --> G[Kubelet y runtime descargan imagen de ECR]
+  A[GitHub Actions builds and tests] --> B[ECR image digest]
+  A --> C[API server accepts desired state]
+  C --> D[Deployment controller manages ReplicaSet]
+  D --> E[ReplicaSet creates Pods]
+  E --> F[Scheduler selects nodes]
+  F --> G[Kubelet and runtime start containers]
   B --> G
-  G --> H[Nginx sirve HTML en puerto 80]
-  H --> I[Readiness habilita endpoints del Service]
-  J[Metrics Server] --> K[HPA ajusta réplicas entre 2 y 4]
+  G --> H[NGINX serves HTTP on port 80]
+  H --> I[Readiness contributes to Service endpoint readiness]
+  J[Metrics Server] --> K[HPA adjusts desired replicas]
   K --> D
 ```
 
-1. **GitHub se autentica:** OIDC permite asumir `GitHubActionsSimpleTestRole`. IAM autoriza publicar la imagen y describir EKS. La entrada de acceso EKS y RBAC autorizan las operaciones Kubernetes.
-2. **El API server acepta el estado deseado:** los manifiestos describen el resultado esperado. Guardar un Deployment no significa que sus Pods ya funcionen.
-3. **Los controladores reconcilian:** el Deployment crea un ReplicaSet; este solicita inicialmente dos Pods. Si uno desaparece, el controlador busca recuperar la cantidad deseada.
-4. **El scheduler decide dónde ejecutar:** considera CPU/memoria solicitadas y el selector AMD64. Si falta capacidad, un Pod puede quedar Pending.
-5. **El nodo inicia el contenedor:** kubelet y el runtime descargan de ECR la imagen indicada por digest. Los nodos del laboratorio tienen permiso ECR de lectura; el permiso de publicación de GitHub no les concede ese acceso.
-6. **Las probes comprueban el servicio:** startup permite arrancar, readiness decide si recibe tráfico y liveness detecta un contenedor que necesita reiniciarse. Se consulta `/healthz`.
-7. **El Service conecta clientes y Pods:** el selector `app: simple-test` encuentra los Pods y Kubernetes mantiene sus EndpointSlices. Un Service ClusterIP presenta una dirección interna estable aunque cambien los Pods. La implementación de red del clúster encamina las conexiones a endpoints listos.
+GitHub uses OIDC to assume the deployment role. IAM permits the relevant AWS operations, while the EKS access entry and Kubernetes RBAC permit workload operations. The API server accepting a Deployment is only the beginning of reconciliation.
 
-## Puertos y acceso interno
+The Deployment controller manages ReplicaSets, which maintain the required Pod count. The scheduler considers resource requests and placement constraints. On the selected node, kubelet and the container runtime pull the digest from ECR and start the container. Nodes need their own image-pull authorization; GitHub's image-push permission does not supply it.
 
-| Elemento | Puerto | Alcance |
-|---|---:|---|
-| Nginx dentro del contenedor | 80 | Atiende HTTP real |
-| Service simple-test | 80 | Dirección virtual interna ClusterIP |
-| Port-forward en la Mac | 8080 | localhost, mientras el túnel esté abierto |
+Startup, readiness, and liveness probes check `/healthz`. Startup gives the application time to initialize; readiness controls eligibility for normal Service traffic; repeated liveness failure can restart the container. A successful probe is evidence about that probe path, not every client request.
 
-Dentro del clúster: `http://simple-test.simple-test.svc.cluster.local:80`. En el mismo namespace también puede usarse `http://simple-test`. Desde la Mac: `http://localhost:8080`, después de iniciar el túnel. No hay LoadBalancer, Ingress ni DNS público.
+The ClusterIP Service selects application Pods and Kubernetes maintains EndpointSlices for them. The Service supplies a stable internal address while Pod addresses change. The cluster network routes traffic to eligible endpoints.
 
-`containerPort: 80` documenta el puerto: Nginx debe configurarse para escuchar ahí. El Service usa `targetPort: http`, que referencia ese puerto con nombre. Port-forward atraviesa el API de Kubernetes y selecciona un Pod; no es una prueba completa del tráfico normal del Service.
+## Ports and access
 
-## Recursos y HPA
+| Component | Port | Scope |
+| --- | --- | --- |
+| NGINX process | 80 | Actual HTTP listener inside the container |
+| simple-test Service | 80 | Internal ClusterIP |
+| Optional Mac tunnel | 8080 | localhost while an authorized port-forward is running |
 
-Cada Pod solicita **25m CPU y 32Mi RAM**, con límites **100m CPU y 64Mi RAM**. `1000m` equivale a una CPU. Son valores iniciales conservadores para esta página estática, no mínimos demostrados mediante pruebas de carga. Los requests ayudan al scheduler a reservar capacidad; los límites restringen consumo. Exceder el límite de memoria puede provocar OOMKilled; CPU puede sufrir throttling.
+Internal URL: `http://simple-test.simple-test.svc.cluster.local:80/`. In the same namespace, the short Service name may be used. Public DNS, an application Ingress, and an external load balancer are not part of this application setup.
 
-El HPA usa CPU media con objetivo **60% del request**: con 25m, corresponde aproximadamente a 15m por Pod. Solicita entre **2 y 4 réplicas** y estabiliza la reducción durante 300 segundos. El cálculo real incluye tolerancias, métricas disponibles y estado de los Pods. Metrics Server debe suministrar métricas; tener el manifiesto HPA no basta.
+`containerPort: 80` declares the port; NGINX still has to listen on it. The Service's named target port references the container's `http` port. Port-forward uses the Kubernetes API and a selected Pod, so it is not a complete test of the normal Service path.
 
-Dos es el mínimo y la cantidad inicial, no una cantidad fija. Bajo carga el HPA cambia el número deseado del Deployment. No crea nodos: si estos están llenos, puede haber réplicas Pending. Una página estática consume poca CPU, por lo que abrirla unas veces no garantiza escalado. La prueba de carga será un ejercicio separado.
+## Resources and scaling
 
-Documentación: [HPA de Kubernetes](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/).
+The baseline container requests 25m CPU and 32Mi memory, with limits of 100m CPU and 64Mi memory. These are initial lab settings, not experimentally proven minimums. Requests influence placement; limits constrain consumption. Exceeding a memory limit can cause termination, while CPU limiting can cause throttling.
 
-## Seguridad del contenedor
+The HPA targets average CPU utilization at 60% of the request and allows two to four replicas. With a 25m request, 60% is approximately 15m per Pod. Its scale-down stabilization window is 300 seconds. Actual decisions also depend on metric availability, readiness, and tolerance. See the [Kubernetes HPA documentation](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/).
 
-Nginx corre como usuario 101 sin root, sin capabilities y con sistema de archivos de solo lectura. `/tmp` es un volumen temporal escribible para PID y archivos temporales. El sysctl del Pod `net.ipv4.ip_unprivileged_port_start=0` permite escuchar en 80 sin root; pertenece a los sysctls seguros documentados por Kubernetes. El Pod no monta automáticamente un token Kubernetes porque servir HTML no requiere hablar con su API.
+The HPA adjusts the Deployment's desired replicas; it does not add nodes. A replica can remain Pending if no eligible node has enough capacity. Light browsing of a static page does not guarantee enough CPU demand to trigger scaling.
 
-Documentación: [sysctls en Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/sysctl-cluster/).
+## Container security
 
-## Qué garantiza el job
+NGINX runs as user 101 without root, dropped Linux capabilities, and a read-only root filesystem. A writable temporary volume supplies runtime files. The configured Pod sysctl permits listening on port 80 without root. No Kubernetes service-account token is mounted automatically because serving HTML does not require API access. See [Kubernetes sysctls](https://kubernetes.io/docs/tasks/administer-cluster/sysctl-cluster/).
 
-Prueba HTTP del contenedor antes de publicarlo, valida manifiestos contra el clúster, espera Pods disponibles y HPA activo, y prueba HTTP por túnel. No demuestra tolerancia a la caída de un nodo, escalado bajo carga ni seguridad de aislamiento entre namespaces. Dos Pods pueden compartir nodo; este laboratorio no configura distribución obligatoria.
+## What validation establishes
 
-Si un paso falla, se conservan recursos para investigar. Kubernetes puede seguir reconciliando después de que el job termine; un workflow fallido no implica que todos los recursos estén detenidos. Revisa el estado antes de reintentar o destruir.
+The initial workflow tests container HTTP before publishing, validates manifests against the cluster, waits for rollout and HPA activation, and tests HTTP through a tunnel. It does not prove node-failure tolerance, load-driven autoscaling, namespace isolation, or every Service traffic path. Two replicas can share a node because mandatory placement spreading is not configured.
 
-## Para tus notas
+Resources remain after a failed workflow so they can be investigated. Controllers may continue reconciling after the runner exits. Inspect current state before retrying or destroying.
 
-Explica con tus palabras: ¿qué parte decide cuántos Pods hacen falta, cuál elige los nodos y cuál descarga la imagen? ¿Por qué cuatro réplicas no implican cuatro nodos?
+## Review questions
+
+Which controller maintains replica count? Which component chooses a node? Which component starts the image? Why do four replicas not imply four nodes? How can a Pod be Running while its application is unavailable to a particular client?

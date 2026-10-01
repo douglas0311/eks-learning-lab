@@ -1,36 +1,36 @@
-# Playbook: simple-test en EKS
+# Application deployment playbook
 
-Este laboratorio prepara una página HTML servida por Nginx en un contenedor, publica su imagen en ECR y la despliega mediante GitHub Actions. Los comandos siguientes son para ejecutarlos por etapas; la preparación local no crea recursos en AWS.
+Build and run the `simple-test` NGINX application on EKS through GitHub Actions. Work through the stages deliberately; local preparation does not create AWS resources. The repository's public name and AWS resource names are separate: the configured cluster remains `eks-learning-lab-lab-eks` in `us-east-1`.
 
-## 1. Archivos y propósito
+## Files and ownership
 
-| Archivo/directorio | Propósito |
-|---|---|
-| `application/simple-test/` | HTML, configuración Nginx y Dockerfile |
-| `kubernetes/simple-test/` | Deployment, Service, HPA y preparación de namespace/RBAC |
-| `iam/simple-test-deploy-policy.json` | Permisos AWS del rol de despliegue |
-| `.github/workflows/deploy-simple-test.yml` | Construcción, prueba, publicación y despliegue inicial |
+| Path | Purpose |
+| --- | --- |
+| `application/simple-test/` | HTML, NGINX configuration, Dockerfile |
+| `kubernetes/simple-test/` | Workload manifests and access definitions |
+| `simple-test-access.tf` | Terraform-managed namespace, EKS entry, deployer RBAC |
+| `operator-exec-access.tf` | Operator exec permission for diagnostics |
+| `iam/simple-test-deploy-policy.json` | AWS permissions for image publishing and EKS discovery |
+| `.github/workflows/deploy-simple-test.yml` | Initial build, test, publish, and deployment |
+| `.github/workflows/update-simple-test.yml` | Controlled updates and baseline recovery for labs 01–02 |
 
-El nombre del clúster configurado en este repositorio es **eks-learning-lab-lab-eks**, región **us-east-1**, cuenta **490224159848**. Confirma que Terraform Provision terminó correctamente antes de continuar. El workflow no crea el clúster ni el repositorio ECR.
+Run commands from your repository checkout. Check identity and cluster status before deployment:
 
 ```bash
-cd /Users/douglasgarcia/Documents/GitHub/terraform
 aws sts get-caller-identity --profile default
 aws eks describe-cluster --name eks-learning-lab-lab-eks \
   --region us-east-1 --profile default \
   --query 'cluster.{Name:name,Status:status,Version:version}'
 ```
 
-## 2. Preparar ECR una vez
-
-Comprueba si el repositorio ya existe. Solo un error `RepositoryNotFoundException` indica que corresponde crearlo; errores de autenticación o permisos deben resolverse primero.
+## One-time ECR preparation
 
 ```bash
 aws ecr describe-repositories --repository-names simple-test \
   --region us-east-1 --profile default
 ```
 
-Si no existe:
+Only `RepositoryNotFoundException` establishes that the repository is missing. Resolve authorization or authentication failures before proceeding. If it is absent and this is the intended account:
 
 ```bash
 aws ecr create-repository --repository-name simple-test \
@@ -39,14 +39,13 @@ aws ecr create-repository --repository-name simple-test \
   --region us-east-1 --profile default
 ```
 
-Las etiquetas inmutables impiden sobrescribir una etiqueta existente. El workflow usa commit, ejecución e intento para generar una etiqueta única; Kubernetes recibe el digest de la imagen. ECR persiste después de destruir EKS y sus imágenes pueden generar cargos de almacenamiento. Esta primera versión no configura limpieza automática de imágenes.
+ECR and the deployment IAM role were prepared in earlier sessions and persist across cluster teardown. These creation commands are reference steps for a new environment. Image tags include the commit, workflow run, and attempt; the workload uses an image digest. ECR storage can incur charges after EKS is destroyed, and this initial design does not configure image expiry.
 
-## 3. Preparar el rol AWS una vez
+## One-time deployment role preparation
 
-El rol es `GitHubActionsSimpleTestRole`. Su documento de confianza OIDC dedicado permite a GitHub asumirlo desde `main` de este repositorio. Conserva el subject personalizado; no lo sustituyas por un ejemplo genérico. ECR y este rol ya fueron creados durante la preparación inicial; los comandos de creación se conservan como referencia para una cuenta nueva.
+Inspect `iam/simple-test-trust.json` before using it. Its customized OIDC subject must match the current repository identity and `main` branch; a repository rename requires a coordinated trust-policy update. Do not substitute a generic subject example.
 
 ```bash
-cat iam/simple-test-trust.json
 aws iam create-role --role-name GitHubActionsSimpleTestRole \
   --assume-role-policy-document file://iam/simple-test-trust.json \
   --description "GitHub Actions role for simple-test deployment" \
@@ -57,20 +56,9 @@ aws iam put-role-policy --role-name GitHubActionsSimpleTestRole \
   --profile default
 ```
 
-Si el rol ya existe, inspecciónalo antes de continuar; no intentes crearlo repetidamente. La política permite publicar en el ECR `simple-test` y describir este clúster. No permite crear ECR, EKS ni roles. `--profile default` selecciona credenciales locales; GitHub usa OIDC, sin access keys guardadas en el workflow.
+Inspect an existing role instead of recreating it. The role can publish to the designated ECR repository and describe this cluster; it does not create ECR, EKS, or IAM roles. `--profile default` selects local credentials. The workflow authenticates with OIDC.
 
-## 4. Preparación automática del clúster
-
-`simple-test-access.tf` declara cuatro recursos que **Terraform Provision** prepara en cada clúster:
-
-- Entrada EKS para `GitHubActionsSimpleTestRole`, vinculada al grupo `simple-test-deployers`.
-- Namespace `simple-test`.
-- Role con permisos para instalar y consultar esta aplicación.
-- RoleBinding que conecta el grupo con el Role.
-
-Terraform lee las reglas desde `kubernetes/simple-test/rbac.yaml`. No apliques esos manifiestos manualmente después: Terraform administra esta preparación. El Deployment, Service y HPA pertenecen al job de la aplicación.
-
-El rol de Provision necesita la política adicional siguiente. Ya se aplicó durante la preparación inicial; el comando sirve de referencia:
+The existing Provision role also needs its bootstrap policy. This was applied during initial setup:
 
 ```bash
 aws iam put-role-policy --role-name TerraformSRELabGitHubActionsRole \
@@ -79,22 +67,25 @@ aws iam put-role-policy --role-name TerraformSRELabGitHubActionsRole \
   --profile default
 ```
 
-Esta política limita la creación de entradas al rol de simple-test en este clúster. No concede acceso Kubernetes directamente: la entrada EKS y el RoleBinding deben existir también.
+## Cluster preparation
 
-**Orden para el clúster actual:** publica los cambios, ejecuta Terraform Provision y espera que termine correctamente; después ejecuta Deploy simple-test. No hace falta Decommission para añadir estos cuatro recursos al clúster que ya funciona. Revisa el plan: si aparecen cambios no esperados, detente para investigarlos.
+Terraform Provision creates the app deployer's EKS access entry, `simple-test` namespace, Role, and RoleBinding. It reads the deployer rules from `kubernetes/simple-test/rbac.yaml`. Terraform also declares the operator's separate exec access. The application Deployment, Service, and HPA are managed by the application workflow.
 
-En futuros laboratorios: Provision reconstruye namespace/RBAC/entrada EKS; ECR y el rol IAM persisten. Metrics Server debe estar funcionando para que el HPA calcule CPU.
-
-Con tu usuario de diagnóstico puedes verificar la preparación:
+Run Provision and inspect its plan and result before deploying. Do not manually recreate Terraform-managed resources. A repair applied outside Terraform may require import before another Provision; see [diagnostic access](diagnostic-access.md).
 
 ```bash
+aws eks update-kubeconfig --name eks-learning-lab-lab-eks \
+  --region us-east-1 --profile default
 kubectl get namespace simple-test
 kubectl -n simple-test get role,rolebinding
+kubectl auth can-i create pods/exec -n simple-test
 ```
 
-## 5. Prueba local opcional del contenedor
+Metrics Server must function for CPU-based HPA calculations. Successful AWS authentication alone does not establish Kubernetes authorization.
 
-Con Docker funcionando:
+## Optional local container check
+
+With Docker running:
 
 ```bash
 docker build --platform linux/amd64 -t simple-test:local application/simple-test
@@ -109,62 +100,47 @@ curl --fail http://localhost:8080/
 docker stop simple-test-local
 ```
 
-La imagen se construye para los nodos AMD64 del laboratorio. Una Mac ARM necesita emulación para esta prueba. El contenedor escucha en 80; el puerto 8080 pertenece a la Mac.
+An ARM Mac needs emulation for this AMD64 image. NGINX listens on port 80; port 8080 belongs to the local host.
 
-## 6. Revisar y subir a Git
-
-Primero termina o separa los cambios anteriores de Terraform: `git commit` incluye **todos** los archivos staged. No uses `git add .` porque el repositorio contiene otros laboratorios.
+## Review and publish changes
 
 ```bash
 git status --short
 git diff --cached --name-only
 ```
 
-Cuando el staging anterior esté resuelto:
+Stage only reviewed files with explicit paths, inspect `git diff --cached`, then commit and push. A commit includes all staged files. Avoid `git add .` in a checkout containing unrelated experiments. A manual workflow must exist on the default branch to appear in Actions; the configured OIDC trust authorizes `main`.
 
-```bash
-git add application/simple-test/ kubernetes/simple-test/ \
-  .github/workflows/deploy-simple-test.yml \
-  iam/simple-test-deploy-policy.json docs/simple-test/
-git diff --cached --stat
-git diff --cached
-git commit -m "Add simple-test EKS application and deployment workflow"
-git push origin main
-```
+## Initial deployment
 
-Estos comandos se ejecutan solo cuando decidas publicar el cambio. El workflow manual debe estar en la rama por defecto para aparecer en Actions. La confianza OIDC actual autoriza `main`.
+Choose **Actions → Deploy simple-test → Run workflow → main**. The workflow checks the account, cluster, immutable ECR repository, Kubernetes permissions, and metrics API. It builds and tests the image, publishes it, validates manifests against the API, applies them, waits for rollout and HPA activation, and tests HTTP through port-forward.
 
-## 7. Ejecutar el workflow inicial
+The initial workflow stops if the Deployment already exists. After a cancelled run, inspect what was created before choosing a recovery path. The separate Update workflow handles an existing application; baseline only restores the fields owned by labs 01–02. Use the matching restore workflow for an active lab 03 or 04.
 
-En GitHub: **Actions → Deploy simple-test → Run workflow → main**.
+Resources and published images are retained after a failure for diagnosis; there is no automatic rollback. The shared workflow concurrency group serializes these jobs with Terraform lifecycle jobs, but does not lock out independent manual commands.
 
-El job verifica cuenta, clúster activo, ECR inmutable, permisos Kubernetes y API de métricas. Después construye y prueba el contenedor, publica la imagen, valida los manifiestos contra el API server y los aplica. Espera el rollout y un HPA con `ScalingActive`, y prueba HTTP mediante port-forward.
-
-Si falta ECR, el clúster o sus permisos, se detiene. Si ya existe el Deployment `simple-test`, también se detiene: el job para actualizar la aplicación será el siguiente laboratorio. Comparte el grupo de concurrencia de Terraform para evitar que estos workflows se ejecuten simultáneamente; operaciones manuales externas no quedan bloqueadas por ese mecanismo.
-
-Un fallo puede dejar recursos parciales e imágenes publicadas. Se conservan para diagnóstico, sin rollback automático. Si ya se creó el Deployment, un reintento se detendrá por existencia: revisa primero el problema y decide la recuperación. No borres recursos para ocultar el fallo.
-
-## 8. Validación y acceso
+## Validation and access
 
 ```bash
 kubectl -n simple-test get deployment,pods,service,hpa
 kubectl -n simple-test top pods
 kubectl -n simple-test describe hpa simple-test
+```
+
+An authorized identity can open a tunnel:
+
+```bash
+kubectl auth can-i create pods/portforward -n simple-test
 kubectl -n simple-test port-forward service/simple-test 8080:80
 ```
 
-Mantén el último comando abierto y usa `http://localhost:8080` en la Mac. Esto crea un túnel autenticado; no publica la aplicación en Internet. La prueba del workflow también usa un túnel y verifica un Pod seleccionado, no toda la ruta ClusterIP.
+Use `http://localhost:8080` while the tunnel is open. The operator's exec permission does not itself grant app port-forward permission. The workflow's tunnel tests one selected Pod and does not validate the complete normal ClusterIP traffic path.
 
-Para probar DNS y Service desde dentro del clúster, una identidad con permiso de crear Pods puede ejecutar:
+For an internal test, the operator can execute tools already present in an application Pod after verifying exec access. A dedicated temporary client needs separate permission to create Pods and an approved image it can pull; do not assume those permissions were granted with exec. Use the lab 04 `check` operation when appropriate. It creates and removes its own client with the workflow identity.
 
-```bash
-kubectl -n simple-test run simple-test-client --rm -i --restart=Never \
-  --image=busybox:1.37 -- wget -qO- http://simple-test.simple-test.svc.cluster.local:80
-```
+A healthy HPA may remain at two replicas under low load. Four is the configured maximum, not the expected constant count.
 
-El rol del workflow no tiene permiso de crear Pods directamente. Un cliente de prueba necesita además poder descargar su imagen. Con poco tráfico, dos réplicas y un HPA activo son un resultado correcto; no esperamos cuatro réplicas permanentemente.
-
-## 9. Diagnóstico y cierre
+## Troubleshooting and teardown
 
 ```bash
 kubectl -n simple-test get events --sort-by=.lastTimestamp
@@ -173,18 +149,14 @@ kubectl -n simple-test logs deployment/simple-test --tail=100
 kubectl -n simple-test describe hpa simple-test
 ```
 
-`ImagePullBackOff`: comprueba imagen y permiso ECR del rol de los nodos. `Pending`: revisa capacidad y eventos. HPA con métricas desconocidas: revisa Metrics Server, requests y Pods Ready. `Forbidden`: revisa identidad, entrada de acceso y RBAC.
+Investigate image references and node ECR access for ImagePullBackOff, scheduler events for Pending, Metrics Server and requests for missing HPA metrics, and identity plus Kubernetes authorization for Forbidden.
 
-Para retirar solo esta aplicación, una identidad administradora puede ejecutar desde la raíz del repositorio:
+An administrator can remove only the workload with `kubectl delete -k kubernetes/simple-test`; the current kustomization contains the Deployment, Service, and HPA. It leaves Terraform's namespace and RBAC. The diagnostic operator is not granted workload deletion.
 
-```bash
-kubectl delete -k kubernetes/simple-test
-```
+For full teardown, use Terraform Decommission and confirm success. It removes the managed infrastructure and app namespace. The manually prepared ECR repository, IAM roles, and persistent S3 state backend are separate lifecycle concerns. Retain evidence before destroying ephemeral monitoring data.
 
-Esto elimina Deployment, Service y HPA, conservando el namespace y RBAC administrados por Terraform. Tu usuario de diagnóstico tiene acceso de lectura, por lo que no puede ejecutar esta eliminación. Para cerrar el laboratorio completo, usa Terraform Decommission; este también elimina el namespace/RBAC y la entrada de acceso del rol de la app. El repositorio ECR y el rol preparados manualmente no pertenecen al estado Terraform y no se eliminan con ese destroy.
+## Review questions
 
-## Preguntas de comprobación
-
-1. ¿Poder subir una imagen a ECR implica poder crear un Deployment?
-2. ¿Qué puerto escucha Nginx y qué puerto usa la Mac con port-forward?
-3. Si el HPA está sano y mantiene dos réplicas, ¿eso es un fallo?
+1. Does permission to publish an ECR image imply permission to create a Deployment?
+2. Which port belongs to NGINX and which belongs to the Mac tunnel?
+3. What does a successful tunnel check prove, and what does it leave untested?

@@ -1,60 +1,57 @@
-# Laboratorio 04 — Conectividad de la aplicación
+# Lab 04 Internal connectivity activation
 
-## Objetivo
+Investigate access to simple-test from inside the cluster using Kubernetes state, observability, and client tests. The exercise creates no application Ingress, external load balancer, or public DNS. Its root cause is left for the investigator.
 
-Investigar un incidente de acceso interno a simple-test y contrastar Kubernetes, observabilidad y una prueba de cliente. El ejercicio mantiene acceso privado: no crea Ingress, ALB, NLB ni DNS público. La causa concreta se descubre durante la investigación.
+## Start from a healthy environment
 
-## Pasos para mañana
+Run each workflow from `main` and wait for its result:
 
-Ejecuta cada workflow desde main y espera su resultado antes del siguiente:
-
-1. Terraform Provision: recrea el clúster y los permisos. Espera verde.
-2. Deploy simple-test: instala la aplicación sana. Espera verde. Si ya existe por una ejecución interrumpida, valida el estado con el flujo de recuperación correspondiente antes de continuar.
-3. Configure SRE observability: prepara el dashboard y las alertas. Espera verde.
-4. Abre Grafana, guarda una captura del estado sano y anota la hora.
-5. Abre Run SRE lab 04 y selecciona operation activate. No se activa mediante Update simple-test ni Run SRE lab 03.
-6. Espera verde: significa que se comprobó el funcionamiento previo y luego el síntoma del incidente, no que el servicio esté sano.
-7. Comparte el enlace y pide: «Dame el enunciado de lab-04 sin revelar la causa».
-
-Workflow: https://github.com/douglas0311/eks-learning-lab/actions/workflows/run-sre-lab-04.yml
-
-## Qué hace cada opción
-
-| Opción | Cuándo usarla | Qué significa verde |
-|---|---|---|
-| activate | Una sola vez, después de la base sana | Incidente aplicado y síntoma verificado |
-| check | Para comprobar acceso durante la investigación | DNS y HTTP interno respondieron correctamente |
-| restore | Después de guardar evidencia y acordar la solución | Configuración original restaurada, rollout y HTTP interno correctos |
-
-check no modifica el Deployment ni el Service. Crea un Pod de prueba temporal y lo elimina al terminar. Si falla, consulta el paso y la evidencia: un error de permisos, descarga de imagen o programación del cliente no demuestra por sí solo un fallo HTTP de la app.
-
-activate y restore también usan ese cliente temporal con la misma imagen ECR que la aplicación. No añaden herramientas a la imagen ni requieren otra imagen pública. El cliente tiene etiquetas distintas para no recibir tráfico de la aplicación.
-
-Para este escenario usa restore del workflow Run SRE lab 04, no baseline. baseline sigue siendo la recuperación de lab-01 y lab-02. Los workflows impiden mezclar ejercicios marcados como activos.
-
-## Grafana y evidencia
+1. **Terraform Provision** creates the cluster and diagnostic permissions.
+2. **Deploy simple-test** installs the application. If it already exists, inspect the previous run and recover appropriately rather than repeating initial installation blindly.
+3. **Configure SRE observability** loads and verifies the dashboard and rules.
+4. Refresh kubeconfig, record the healthy dashboard, and validate diagnostic access:
 
 ```bash
-aws eks update-kubeconfig \
-  --name eks-learning-lab-lab-eks \
+aws eks update-kubeconfig --name eks-learning-lab-lab-eks \
   --region us-east-1 --profile default
+kubectl auth can-i create pods/exec -n simple-test
+kubectl -n simple-test get pods
+# Use a current Pod name for this access check.
+kubectl -n simple-test exec <pod-name> -- id
+```
+
+If exec is denied, follow [diagnostic access](diagnostic-access.md). Do not call that a DNS failure: the network command has not run.
+
+5. Run **Run SRE lab 04 → operation: activate**. It is separate from Update simple-test and Run SRE lab 03.
+6. Green means initial connectivity and the subsequent incident symptom were verified. It does not mean the application is accessible normally.
+7. Begin with the [problem statement](../labs/lab-04/README.md).
+
+## Workflow operations
+
+| Operation | Purpose | Meaning of success |
+| --- | --- | --- |
+| activate | Start once from the healthy environment | Scenario change and symptom verified |
+| check | Test internal access during investigation | Internal DNS and HTTP test passed |
+| restore | Recover after preserving evidence | Saved configuration, rollout, and internal HTTP verified |
+
+`check` does not patch the application, but creates and removes a temporary client Pod. The client uses the existing application image and distinct labels. A client scheduling, image-pull, or authorization failure does not independently establish an application HTTP failure.
+
+Use this workflow's restore operation, not baseline. The latter recovers labs 01–02. Active-exercise guards prevent mixing scenarios.
+
+## Evidence and monitoring
+
+```bash
 kubectl -n monitoring port-forward service/kube-prometheus-stack-grafana 3000:80
 ```
 
-Abre http://localhost:3000/d/sre-simple-test. Las credenciales y los detalles de acceso están en lab-03-start.md. Observa la última media hora con actualización cada 30 segundos. Relaciona cada gráfica con una pregunta; no supongas que todas las fallas deben producir un cambio en todos los paneles. El dashboard actual no mide HTTP continuamente.
+Visit `http://localhost:3000/d/sre-simple-test`. Credentials and metric context are in the [observability guide](lab-03-start.md). Use a time range covering before and after activation. Not every failure changes every panel, and this dashboard is not a continuous HTTP availability check.
 
-Guarda hora, alcance, estado actual, eventos, consultas y resultados de la prueba de cliente. Construye la hipótesis antes de proponer cambios. No abras lab04.py para evitar adelantarte la respuesta.
+Record the client, target, timestamp, command, exit status, output, and interpretation. Establish a hypothesis before changing configuration. Avoid reading `lab04.py` during the investigation.
 
-## Cancelación y recuperación
+## Interrupted runs and teardown
 
-La configuración original se guarda antes de activar el fallo. Si cancelas activate o restore, guarda el enlace y utiliza restore del mismo workflow para recuperar. No vuelvas a activar sobre un registro existente.
+The workflow saves recovery information before changing the scenario. If activation or recovery is cancelled, preserve the run URL and use restore rather than activating again over an existing record. Recovery keeps the record until checks pass. Missing recovery data or replaced resource identities cause it to stop rather than modifying unrelated resources.
 
-restore conserva el registro hasta comprobar la recuperación. Si falta ese registro o un recurso fue reemplazado, se detiene para evitar modificar recursos ajenos. Si cancelaste antes de guardar el registro, puede no haber incidente aplicado: revisa el último paso y el estado actual.
+Temporary clients have execution deadlines. Subsequent operations clean up exercise-owned leftover clients. The workflow does not delete application Pods or change nodes for this exercise.
 
-Los Pods de prueba tienen un tiempo máximo de ejecución. La siguiente operación limpia los clientes de prueba que hayan quedado de una cancelación. No se borran Pods de la aplicación ni se cambian nodos.
-
-## Cierre y estado de validación
-
-Puedes ejecutar Terraform Decommission sin restaurar primero. Guarda capturas y notas antes: el historial de Prometheus y los recursos del ejercicio se eliminan con el entorno. Confirma Decommission en verde.
-
-La preparación se valida localmente. La comprobación real del escenario se ejecutará en tu clúster cuando actives el workflow. El workflow usa el rol existente de Terraform; tu usuario conserva su rol de diagnóstico.
+Save evidence before Terraform Decommission; monitoring history is ephemeral. Full teardown does not require restoring first. A prior activation succeeded after a validation-script fix; the learner's application RCA remains open. The separate unexpected exec-permission incident is documented in [INC-001](../incidents/INC-001-pods-exec/rca.md).

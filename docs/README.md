@@ -1,0 +1,46 @@
+# Engineering documentation
+
+This portfolio records hands-on AWS and Kubernetes work by Douglas García Jiménez. Investigation notes preserve the reasoning, including hypotheses that changed after new evidence. Root cause analyses distinguish confirmed causes from proposed remediation and verified recovery.
+
+## Start here
+
+- [Application deployment playbook](simple-test/playbook.md)
+- [How Kubernetes runs the application](simple-test/kubernetes-explained.md)
+- [Observability and local access](simple-test/lab-03-start.md)
+- [Diagnostic permissions](simple-test/diagnostic-access.md)
+- [EKS egress design playbook](networking/egress-playbook.md)
+- [Progressive SRE curriculum](curriculum.md)
+
+## Investigation portfolio
+
+| Case | Engineering notes | Root cause analysis | Evidence status |
+| --- | --- | --- | --- |
+| Lab 01 — Container startup | [Notes](labs/lab-01/engineering-notes.md) | [RCA](labs/lab-01/rca.md) | Cause supported; recovery not recorded in the retained notes |
+| Lab 02 — CPU scheduling | [Notes](labs/lab-02/engineering-notes.md) | [RCA](labs/lab-02/rca.md) | Cause supported; two healthy application Pods recorded after recovery |
+| Lab 03 — Node scheduling | [Notes](labs/lab-03/engineering-notes.md) | [RCA](labs/lab-03/rca.md) | Cause supported; workload and dashboard recovery reported |
+| Lab 04 — Internal connectivity | [Open investigation](labs/lab-04/engineering-notes.md) | Pending investigation | Scenario activation verified; learner RCA remains open |
+| INC-001 — Diagnostic exec denied | [Notes](incidents/INC-001-pods-exec/engineering-notes.md) | [RCA](incidents/INC-001-pods-exec/rca.md) | Cause confirmed; fix published; operator validation pending in source notes |
+
+Read each lab's README for a spoiler-free entry point. Completed RCAs disclose solutions; the open lab does not.
+
+## Documentation conventions
+
+Each completed lab contains a README, engineering notes, and an RCA. Notes explain observations and decisions; the RCA summarizes the failure mechanism, impact, remediation, and evidence of recovery. Use the [engineering notes template](templates/engineering-notes.md) and [RCA template](templates/rca.md) for new investigations.
+
+The source is Douglas's Engineering notes document, reviewed on October 1, 2026, together with the session record and versioned automation. Duplicate passages were consolidated. Commands were corrected without converting intended tests into claimed results. Account identifiers are generalized in new incident excerpts. Original notes remain unchanged in Google Docs.
+
+Times retain their recorded timezone when available. A timestamp without a timezone is identified as such; no incident duration, availability percentage, or customer impact is inferred from an incomplete record. These are controlled lab exercises, not production incident claims.
+
+## Project records
+
+- [Historical Terraform state reconciliation](history/terraform-state-reconciliation.md)
+- [Repository naming and migration](repository-naming.md)
+- [Bedrock work status](bedrock/README.md)
+
+## Word copies for OneNote
+
+These English exports mirror the application guides. Markdown remains the editable source of truth.
+
+- [Application deployment playbook](exports/simple-test-playbook.docx)
+- [Kubernetes walkthrough](exports/simple-test-kubernetes-explained.docx)
+- [EKS egress playbook](exports/eks-egress-playbook.docx)
