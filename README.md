@@ -42,7 +42,7 @@ flowchart LR
 | Lab 01 | Container startup failures and comparing Pod configuration | Investigated in EKS |
 | Lab 02 | CPU requests versus node allocatable capacity | Investigated and recovered in EKS |
 | Lab 03 | Scheduling constraints and correlating events with dashboards | Investigated and recovered in EKS |
-| Lab 04 | Internal application connectivity | Selector mismatch identified; recovery reported |
+| Lab 04 | Internal application connectivity | Selector mismatch identified; HTTP recovery documented |
 | INC-001 | Kubernetes exec authorization | Diagnosed; correction published, operator verification pending in notes |
 
 Exercises are intended to preserve the investigation experience. The learner-facing guides explain how to start each scenario without giving away its root cause.

@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-Investigator: Douglas García Jiménez. Investigation opened October 1, 2026. The activation workflow completed successfully after an automation correction. The Service selector mismatch was identified during the October 5 follow-up. Douglas reported the issue resolved; raw post-recovery EndpointSlice and HTTP output was not retained in this conversation.
+Investigator: Douglas García Jiménez. Investigation opened October 1, 2026. The activation workflow completed successfully after an automation correction. The Service selector mismatch was identified during the October 5 follow-up. OneNote Lab-04.1 records the corrected selector and an HTTP 200 recovery response on October 5; a post-recovery EndpointSlice listing was not retained.
 
 The reported path is client inside the cluster → Service → Pod → NGINX. This exercise does not require a public load balancer or HTTPS termination.
 
@@ -32,8 +32,8 @@ A `no` from the former command did not establish that exec remained forbidden. N
 
 ### Investigation evidence
 
-- The application responded locally according to the investigator, but HTTP access through the Service failed. The complete curl response and exit status were not retained here.
-- An initial DNS error referred to `simple-test.simple-test.svc.cluster.loca`, missing the final `l`. That NXDOMAIN response cannot establish failure of the correctly spelled name. The corrected lookup output was not retained here.
+- OneNote records HTTP/1.1 200 OK from a localhost HEAD request on port 80, while the HEAD request through the Service from Pod `simple-test-7649f694f5-9xk9c` failed: `curl: (7) Failed to connect to simple-test.simple-test.svc.cluster.local port 80 after 7 ms: Could not connect to server`.
+- An initial DNS error referred to `simple-test.simple-test.svc.cluster.loca`, missing the final `l`. That NXDOMAIN response cannot establish failure of the correctly spelled name. The corrected lookup output in OneNote resolves `simple-test.simple-test.svc.cluster.local` to `172.20.205.240`, using DNS server `172.20.0.10`.
 - `/etc/resolv.conf` contained `nameserver 172.20.0.10` and `search simple-test.svc.cluster.local svc.cluster.local cluster.local ec2.internal`.
 - Service `simple-test` existed in namespace `simple-test`, with ClusterIP `172.20.205.240`, port `80/TCP`, and selector `app=simple-test-v2`.
 - EndpointSlice `simple-test-4kc4h` showed IPv4 with PORTS and ENDPOINTS both `<unset>`.
@@ -43,7 +43,19 @@ A `no` from the former command did not establish that exec remained forbidden. N
 
 I compared the Service selector with the intended backend Pods' labels. The Service selected `app=simple-test-v2`, while both Pods had `app=simple-test`. The mismatch explains the empty backend endpoint set and why Service access failed even though the application responded locally. I proposed restoring the Service selector to `app=simple-test` and validating the same HTTP path again.
 
-Recovery was subsequently reported by Douglas as resolved. The exact restore command, completion timestamp, populated EndpointSlice output, and HTTP recovery response were not provided; no specific HTTP status or measured outage duration is claimed.
+### Recovery evidence from OneNote Lab-04.1
+
+The post-fix Service listing shows the same ClusterIP (`172.20.205.240`) with selector `app=simple-test`. Both application Pods remained 1/1 Running with zero restarts. Douglas repeated the same HTTP HEAD request from Pod `simple-test-7649f694f5-9xk9c` through the Service name and recorded:
+
+```text
+HTTP/1.1 200 OK
+Server: nginx/1.28.3
+Date: Mon, 05 Oct 2026 23:19:15 GMT
+Content-Type: text/html
+Content-Length: 648
+```
+
+That response date is 17:19:15 in Costa Rica (UTC-6). This validates recovery of the tested Service path. It does not prove both backends were exercised. The exact repair command and post-recovery EndpointSlice listing were not retained, and no measured outage duration is claimed.
 
 ### Technical clarifications and lessons
 
@@ -77,6 +89,6 @@ An earlier activation run failed in the verification script with `TypeError: 'No
 
 ## Evidence provenance
 
-This update uses the commands and outputs pasted by Douglas and his recovery confirmation in the October 5 conversation. OneNote Lab-04.1 is a requested additional source; it was not available at the time of this update. Historical October 1 observations above remain separate from the recreated environment.
+This update uses the commands and outputs pasted by Douglas and his recovery confirmation in the October 5 conversation. OneNote Lab-04.1 was subsequently read and cross-checked in My Notebook → SRE - FinOps → New Section Group → New Section 1. It supplies the corrected DNS response, the curl connection error, and the post-fix Service listing and HTTP response. Raw command outputs were preserved during the editorial update; misleading interpretations were corrected. Historical October 1 observations above remain separate from the recreated environment.
 
 [Root cause analysis](rca.md)

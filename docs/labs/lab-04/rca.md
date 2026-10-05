@@ -1,6 +1,6 @@
 # Lab 04 Root cause analysis
 
-**Status:** cause supported by selector, Pod-label, and EndpointSlice evidence; recovery reported by the investigator on October 5, 2026.
+**Status:** cause supported by selector, Pod-label, and EndpointSlice evidence; HTTP recovery documented in the investigator’s OneNote notes on October 5, 2026.
 
 ## Summary and impact
 
@@ -10,11 +10,11 @@ The internal simple-test Service had no backend endpoints because its selector (
 
 The Service selector excluded both intended application Pods. Kubernetes therefore had no matching Pod addresses to publish as backend endpoints for that Service. The empty EndpointSlice is consistent with the failed Service path. Healthy application processes did not compensate for a selector mismatch.
 
-The earlier malformed DNS query and the separate exec authorization issue were diagnostic distractions, not this selector failure's cause. The retained transcript does not include the corrected DNS lookup response, so DNS success is not asserted from configuration alone.
+The earlier malformed DNS query and the separate exec authorization issue were diagnostic distractions, not this selector failure's cause. OneNote records the corrected DNS lookup resolving the full Service name to 172.20.205.240. DNS resolution succeeded while the Service HTTP request failed with curl error 7.
 
 ## Remediation and validation
 
-Douglas proposed restoring the Service selector to `app=simple-test` and subsequently confirmed resolution. The expected recovery checks are populated backend endpoints and a successful HTTP request through the same Service name. Raw post-recovery output and the exact repair operation were not retained; the status reflects operator-reported recovery rather than an independently executed check.
+Douglas proposed restoring the Service selector to `app=simple-test`. His post-fix Service listing confirms that selector, and the repeated HTTP HEAD request through the same Service name returned `HTTP/1.1 200 OK`, with response date `Mon, 05 Oct 2026 23:19:15 GMT`. The retained OneNote output establishes recovery of that tested path, not that both backend Pods were individually exercised. A post-recovery EndpointSlice listing and the exact repair operation were not retained. These are reviewed investigator outputs; the assistant did not run live recovery checks.
 
 ## Prevention and follow-up
 
