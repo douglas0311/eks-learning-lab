@@ -43,6 +43,7 @@ flowchart LR
 | Lab 02 | CPU requests versus node allocatable capacity | Investigated and recovered in EKS |
 | Lab 03 | Scheduling constraints and correlating events with dashboards | Investigated and recovered in EKS |
 | Lab 04 | Internal application connectivity | Selector mismatch identified; HTTP recovery documented |
+| [Lab 05](docs/labs/lab-05/README.md) | Ingress and load balancer delivery | Prepared; live activation pending |
 | INC-001 | Kubernetes exec authorization | Diagnosed; correction published, operator verification pending in notes |
 
 Exercises are intended to preserve the investigation experience. The learner-facing guides explain how to start each scenario without giving away its root cause.

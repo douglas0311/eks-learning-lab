@@ -76,6 +76,36 @@ jobs:
       - name: Validate Terraform
         run: terraform validate
 
+      # Remove controller-managed Ingress resources while its controller and VPC still exist.
+      - name: Clean up lab 05 before Terraform teardown
+        env:
+          KUBECONFIG: ${{ runner.temp }}/lab05-cleanup-kubeconfig
+        run: |
+          trap 'rm -f "$KUBECONFIG"' EXIT
+          if ! aws eks describe-cluster --name eks-learning-lab-lab-eks > "$RUNNER_TEMP/cleanup-cluster.json" 2> "$RUNNER_TEMP/cleanup-cluster.err"; then
+            if grep -q 'ResourceNotFoundException' "$RUNNER_TEMP/cleanup-cluster.err"; then
+              echo "Cluster already absent; no Kubernetes cleanup can run."
+              exit 0
+            fi
+            cat "$RUNNER_TEMP/cleanup-cluster.err" >&2
+            exit 1
+          fi
+          CLUSTER_VERSION=$(jq -r '.cluster.version' "$RUNNER_TEMP/cleanup-cluster.json")
+          [[ "$CLUSTER_VERSION" =~ ^1\.[0-9]+$ ]]
+          KUBECTL_VERSION=$(curl -fsSL "https://dl.k8s.io/release/stable-$CLUSTER_VERSION.txt")
+          [[ "$KUBECTL_VERSION" =~ ^v1\.[0-9]+\.[0-9]+$ ]]
+          mkdir -p "$RUNNER_TEMP/lab05-kubectl"
+          (
+            cd "$RUNNER_TEMP/lab05-kubectl"
+            curl -fsSLO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
+            curl -fsSLO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl.sha256"
+            echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+            chmod +x kubectl
+          )
+          export PATH="$RUNNER_TEMP/lab05-kubectl:$PATH"
+          aws eks update-kubeconfig --name eks-learning-lab-lab-eks --kubeconfig "$KUBECONFIG"
+          python3 scripts/sre/lab05.py cleanup
+
       - name: Terraform destroy plan
         run: terraform plan -destroy -input=false -lock-timeout=5m -out=destroy.tfplan
 

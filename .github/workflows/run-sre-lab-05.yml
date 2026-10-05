@@ -1,7 +1,17 @@
-name: Configure SRE diagnostic access
+name: Run SRE lab 05
 
 on:
   workflow_dispatch:
+    inputs:
+      operation:
+        description: "Activate lab-05, restore Ingress, check HTTP, or clean up"
+        required: true
+        type: choice
+        options:
+          - activate
+          - restore
+          - check
+          - cleanup
 
 permissions:
   contents: read
@@ -17,12 +27,13 @@ env:
   AWS_PAGER: ""
   EXPECTED_ACCOUNT: "490224159848"
   CLUSTER_NAME: eks-learning-lab-lab-eks
+  ECR_REPOSITORY: simple-test
   KUBECONFIG: ${{ github.workspace }}/.simple-test-kubeconfig
 
 jobs:
   configure:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         shell: bash
@@ -57,13 +68,12 @@ jobs:
           chmod +x kubectl
           echo "$RUNNER_TEMP/kubectl-bin" >> "$GITHUB_PATH"
 
-      - name: Grant namespace-scoped diagnostic exec access
+      - name: Apply lab operation
+        env:
+          LAB_OPERATION: ${{ inputs.operation }}
         run: |
           aws eks update-kubeconfig --name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG"
-          kubectl apply --dry-run=server -f kubernetes/simple-test/operator-exec.yaml
-          kubectl apply -f kubernetes/simple-test/operator-exec.yaml
-          kubectl auth can-i create pods --subresource=exec -n simple-test --as=arn:aws:iam::490224159848:user/day7-cli-user
-          echo 'Granted pods/exec create in simple-test. Validate with your own kubectl identity before retrying diagnostics.' >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/sre/lab05.py "$LAB_OPERATION"
 
       - name: Remove temporary kubeconfig
         if: ${{ always() }}

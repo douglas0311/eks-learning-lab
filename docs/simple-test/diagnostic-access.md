@@ -14,7 +14,7 @@ the named user. It does not deploy the application or activate/restore an exerci
 Then validate from your own terminal:
 
 ```bash
-kubectl auth can-i create pods/exec -n simple-test
+kubectl auth can-i create pods --subresource=exec -n simple-test
 kubectl -n simple-test exec <pod-name> -- id
 ```
 

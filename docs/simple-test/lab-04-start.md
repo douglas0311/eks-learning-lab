@@ -14,7 +14,7 @@ Run each workflow from `main` and wait for its result:
 ```bash
 aws eks update-kubeconfig --name eks-learning-lab-lab-eks \
   --region us-east-1 --profile default
-kubectl auth can-i create pods/exec -n simple-test
+kubectl auth can-i create pods --subresource=exec -n simple-test
 kubectl -n simple-test get pods
 # Use a current Pod name for this access check.
 kubectl -n simple-test exec <pod-name> -- id
@@ -54,4 +54,4 @@ The workflow saves recovery information before changing the scenario. If activat
 
 Temporary clients have execution deadlines. Subsequent operations clean up exercise-owned leftover clients. The workflow does not delete application Pods or change nodes for this exercise.
 
-Save evidence before Terraform Decommission; monitoring history is ephemeral. Full teardown does not require restoring first. A prior activation succeeded after a validation-script fix; the learner's application RCA remains open. The separate unexpected exec-permission incident is documented in [INC-001](../incidents/INC-001-pods-exec/rca.md).
+Save evidence before Terraform Decommission; monitoring history is ephemeral. Full teardown does not require restoring first. A prior activation succeeded after a validation-script fix; the selector mismatch and HTTP recovery are documented in the Lab 04 RCA. The separate unexpected exec-permission incident is documented in [INC-001](../incidents/INC-001-pods-exec/rca.md).

@@ -78,7 +78,7 @@ aws eks update-kubeconfig --name eks-learning-lab-lab-eks \
   --region us-east-1 --profile default
 kubectl get namespace simple-test
 kubectl -n simple-test get role,rolebinding
-kubectl auth can-i create pods/exec -n simple-test
+kubectl auth can-i create pods --subresource=exec -n simple-test
 ```
 
 Metrics Server must function for CPU-based HPA calculations. Successful AWS authentication alone does not establish Kubernetes authorization.
