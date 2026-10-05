@@ -8,6 +8,7 @@ HTTP is expected on port 80. The intended client is inside the VPC/cluster; no p
 
 Deliver: observations, commands and results, hypothesis, root cause, proposed remediation, and recovery evidence. Distinguish what each test proves from what it leaves unresolved.
 
+- [Concept refresh — read before investigating](concept-refresh.md)
 - [Start, recovery and cleanup](../../simple-test/lab-05-start.md)
 - [Engineering notes](engineering-notes.md)
 

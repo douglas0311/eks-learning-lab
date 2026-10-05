@@ -23,6 +23,10 @@ Start with a verified healthy application, persistent Terraform state, working d
 
 Infrastructure needed for ingress, storage, or node autoscaling is added when the relevant exercise needs it. API-access scenarios must preserve an administrative recovery path. Cost exercises use bounded resources or historical evidence.
 
+## Concept refresh before each lab
+
+Provide a short, spoiler-free review of the relevant components, their relationships, terminology, and what common signals do and do not establish. Include optional conceptual self-check questions. Keep the refresh separate from the incident statement, implementation, and diagnostic hints; it must not identify the injected fault or prescribe a troubleshooting sequence. This supports recall without replacing the learner's investigation.
+
 ## Evidence and progression
 
 Each investigation should explain scope, relevant observations, a testable hypothesis, contradictory evidence, recovery, and remaining uncertainty. Record assistance as a guiding question, command help, conceptual clarification, or guided resolution rather than treating a percentage as an objective skill score.

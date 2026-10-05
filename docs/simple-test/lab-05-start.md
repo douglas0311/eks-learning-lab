@@ -2,6 +2,10 @@
 
 Prepared for October 6, 2026. Douglas runs all workflows. Preparation and offline tests do not establish live AWS success; the first activation must verify its prerequisites and the intended symptom.
 
+## Before activation
+
+Read the [concept refresh](../labs/lab-05/concept-refresh.md) to recall components, traffic flow, and terminology. It contains no scenario answer or diagnostic sequence.
+
 ## Start
 
 Run workflows from `main`, waiting for each result:
