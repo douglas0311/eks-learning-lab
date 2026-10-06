@@ -70,13 +70,20 @@ def wait_symptom(uid):
     raise RuntimeError('Expected controller symptom was not verified. Inspect events; do not assume activation succeeded.')
 
 
-def ingress_http(image, host):
+def ingress_http(image, host, expected=200):
     if not re.fullmatch(r'internal-[a-zA-Z0-9-]+\.us-east-1\.elb\.amazonaws\.com', host):
         raise RuntimeError('Unexpected internal ALB hostname')
     name = 'sre-lab05-probe-' + uuid.uuid4().hex[:10]
-    script = ('for i in $(seq 1 36); do '
-              'wget -T 5 -q -O /tmp/body "http://' + host + '/" && '
-              'grep -q "simple-test is running" /tmp/body && exit 0; sleep 5; done; exit 1')
+    if expected not in (200, 404):
+        raise ValueError('Unsupported expected HTTP status')
+    # Distinguish an HTTP response from DNS, TCP, and client-tool failures.
+    script = ('command -v curl >/dev/null || exit 44; '
+              'for i in $(seq 1 36); do '
+              'code=$(curl -sS --connect-timeout 3 --max-time 5 -o /tmp/body '
+              '-w "%{http_code}" "http://' + host + '/"); result=$?; '
+              '[ "$result" -eq 0 ] && [ "$code" = "' + str(expected) + '" ] && ' +
+              ('grep -q "simple-test is running" /tmp/body' if expected == 200 else 'true') +
+              ' && exit 0; sleep 5; done; exit 1')
     pod = {'apiVersion': 'v1', 'kind': 'Pod', 'metadata': {'name': name, 'namespace': NS,
            'labels': {'sre-lab/probe': LAB}}, 'spec': {'restartPolicy': 'Never',
            'activeDeadlineSeconds': 390, 'automountServiceAccountToken': False,
@@ -105,15 +112,15 @@ def ingress_http(image, host):
         kubectl('-n', NS, 'delete', 'pod', name, '--ignore-not-found', '--wait=false')
 
 
-def check(image, record):
+def check(image, record, expected=200):
     for _ in range(80):
         ingress = read('-n', NS, 'get', 'ingress', NAME)
         owned(ingress, record)
         addresses = ingress.get('status', {}).get('loadBalancer', {}).get('ingress') or []
         if addresses and addresses[0].get('hostname'):
             host = addresses[0]['hostname']
-            ingress_http(image, host)
-            summary('Lab-05 HTTP verified through the internal ALB: http://' + host + '/')
+            ingress_http(image, host, expected)
+            summary('Lab-05 HTTP ' + str(expected) + ' verified through the internal ALB: http://' + host + '/')
             return
         time.sleep(5)
     raise RuntimeError('Ingress has no ALB hostname after waiting. Recovery record retained.')
@@ -156,7 +163,9 @@ def cleanup():
     summary('Lab-05 Ingress deletion completed with controller finalizers respected; recovery record removed.')
 
 
-def main(operation):
+def main(operation, scenario="lab-05"):
+    if scenario not in ("lab-05", "lab-05.1"):
+        raise ValueError("Unknown scenario")
     if operation == 'cleanup':
         cleanup()
         return
@@ -196,18 +205,27 @@ def main(operation):
             raise RuntimeError('Unexpected Service ALB overrides; review before activation')
         probe(image, healthy=True)
         record = {'token': uuid.uuid4().hex, 'deployment_uid': dep['metadata']['uid'],
-                  'service_uid': service['metadata']['uid']}
+                  'service_uid': service['metadata']['uid'], 'scenario': scenario}
         save(record, create=True)  # Before marker or Ingress creation, including cancellation.
         annotations = dict(dep['metadata'].get('annotations', {})); annotations[MARK] = LAB
         patch('deployment', 'simple-test', [
             {'op': 'test', 'path': '/metadata/resourceVersion', 'value': dep['metadata']['resourceVersion']},
             {'op': 'add', 'path': '/metadata/annotations', 'value': annotations}], NS)
-        created = json.loads(kubectl('create', '-f', '-', '-o', 'json', obj=manifest(record['token'])))
+        created = json.loads(kubectl('create', '-f', '-', '-o', 'json', obj=manifest(record['token'], broken=(scenario == 'lab-05'))))
         record['ingress_uid'] = created['metadata']['uid']
         save(record)
-        wait_symptom(record['ingress_uid'])
+        if scenario == 'lab-05.1':
+            check(image, record)  # Establish real ALB HTTP before fault injection.
+            current = read('-n', NS, 'get', 'ingress', NAME)
+            owned(current, record)
+            patch('ingress', NAME, [
+                {'op': 'test', 'path': '/metadata/resourceVersion', 'value': current['metadata']['resourceVersion']},
+                {'op': 'replace', 'path': '/spec/rules/0/http/paths/0/path', 'value': '/application'}], NS)
+            check(image, record, expected=404)
+        else:
+            wait_symptom(record['ingress_uid'])
         probe(image, healthy=True)
-        summary('Lab-05 activated. Internal application access passed; the intended Ingress reconciliation symptom was verified. Preserve evidence before restore.')
+        summary(scenario + ' activated. Prerequisites and the intended symptom were verified. Preserve evidence before restore.')
         return
     if not saved or not ingress:
         raise RuntimeError('No complete lab-05 recovery record/Ingress. Use cleanup for an interrupted activation.')
@@ -218,10 +236,15 @@ def main(operation):
     service = read('-n', NS, 'get', 'service', 'simple-test')
     if service['metadata']['uid'] != record['service_uid']:
         raise RuntimeError('Service replaced; refusing recovery against another Service')
+    variant = record.get('scenario', 'lab-05')
+    if variant not in ('lab-05', 'lab-05.1'):
+        raise RuntimeError('Unknown recovery scenario; refusing repair')
     if operation == 'restore':
+        repair_path, repair_value = (('/spec/rules/0/http/paths/0/path', '/')
+                                     if variant == 'lab-05.1' else (PORT_PATH, {'number': 80}))
         patch('ingress', NAME, [
             {'op': 'test', 'path': '/metadata/resourceVersion', 'value': ingress['metadata']['resourceVersion']},
-            {'op': 'replace', 'path': PORT_PATH, 'value': {'number': 80}}], NS)
+            {'op': 'replace', 'path': repair_path, 'value': repair_value}], NS)
     probe(image, healthy=True)
     check(image, record)
     summary('Keep the recovery record until cleanup. Run cleanup before Terraform Decommission.')
@@ -229,7 +252,7 @@ def main(operation):
 
 if __name__ == '__main__':
     try:
-        main(sys.argv[1])
+        main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "lab-05")
     except subprocess.CalledProcessError as error:
         print(error.stderr, file=sys.stderr)
         raise

@@ -19,7 +19,7 @@ This portfolio records hands-on AWS and Kubernetes work by Douglas García Jimé
 | Lab 02 — CPU scheduling | [Notes](labs/lab-02/engineering-notes.md) | [RCA](labs/lab-02/rca.md) | Cause supported; two healthy application Pods recorded after recovery |
 | Lab 03 — Node scheduling | [Notes](labs/lab-03/engineering-notes.md) | [RCA](labs/lab-03/rca.md) | Cause supported; workload and dashboard HTTP recovery documented |
 | Lab 04 — Internal connectivity | [Engineering notes](labs/lab-04/engineering-notes.md) | [RCA](labs/lab-04/rca.md) | Selector mismatch identified; HTTP recovery documented |
-| Lab 05 — Ingress delivery | [Engineering notes](labs/lab-05/engineering-notes.md) | Pending investigation | Prepared; live activation pending |
+| Lab 05 — Ingress delivery | [Engineering notes](labs/lab-05/engineering-notes.md) | [RCA](labs/lab-05/rca.md) | Intended cause diagnosed; additional IAM repair prepared |
 | INC-001 — Diagnostic exec denied | [Notes](incidents/INC-001-pods-exec/engineering-notes.md) | [RCA](incidents/INC-001-pods-exec/rca.md) | Cause confirmed; fix published; operator validation pending in source notes |
 
 Read each lab's README for a spoiler-free entry point. Completed RCAs disclose solutions; the open lab does not.
@@ -45,3 +45,5 @@ These English exports mirror the application guides. Markdown remains the editab
 - [Application deployment playbook](exports/simple-test-playbook.docx)
 - [Kubernetes walkthrough](exports/simple-test-kubernetes-explained.docx)
 - [EKS egress playbook](exports/eks-egress-playbook.docx)
+
+[Lab 05.1 — independent variant](labs/lab-05-1/README.md): prepared; live activation pending.

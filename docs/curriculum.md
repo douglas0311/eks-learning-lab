@@ -10,7 +10,7 @@ The original scenario list defines a learning sequence, not a statistical claim 
 | 02 | Pending Pods and resource requests | Oversized CPU request investigated and workload recovered |
 | 03 | Node health and scheduling | Scheduling eligibility investigated; actual NotReady and pressure remain future variants |
 | 04 | Internal Service connectivity | Selector mismatch diagnosed; HTTP recovery documented |
-| 05 | Ingress controller and load balancer creation | Prepared; live activation pending |
+| 05 | Ingress controller and load balancer creation | Lab 05 cause diagnosed; IAM repair and independent 05.1 variant prepared |
 | 06 | Persistent volumes and mounting | Planned |
 | 07 | Autoscaling expectations and failures | Planned |
 | 08 | Kubernetes API connectivity and access | Planned; authorization prerequisite already encountered |

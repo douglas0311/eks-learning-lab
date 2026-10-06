@@ -1,0 +1,31 @@
+name: Repair load balancer controller IAM
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-eks-lab-state
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  AWS_PAGER: ""
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::490224159848:role/TerraformSRELabGitHubActionsRole
+          aws-region: us-east-1
+      - name: Repair existing controller policy
+        run: python3 scripts/sre/repair-controller-iam.py

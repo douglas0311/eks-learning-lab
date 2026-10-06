@@ -110,4 +110,44 @@ class Lab05Tests(unittest.TestCase):
             self.assertFalse(pod['spec']['automountServiceAccountToken'])
             self.assertIn('delete',cli.call_args.args)
 
+
+class Lab51Tests(unittest.TestCase):
+    def run_activation(self, healthy=True):
+        calls=[]
+        def command(*args,**kwargs):
+            if args[0]=='create':
+                calls.append(('create',kwargs['obj']));return json.dumps(ING)
+            return ''
+        def check(*args,**kwargs):
+            calls.append(('http',kwargs.get('expected',200)))
+            if not healthy:raise RuntimeError('ALB baseline failed')
+        with patch.object(lab05,'read',side_effect=[DEP,{'spec':{'controller':'ingress.k8s.aws/alb'}},SVC,ING]), patch.object(lab05,'optional',return_value=None), patch.object(lab05,'kubectl',side_effect=command), patch.object(lab05,'ready_addresses',return_value=2), patch.object(lab05,'probe'), patch.object(lab05,'save'), patch.object(lab05,'patch',side_effect=lambda *a:calls.append(('patch',a))), patch.object(lab05,'check',side_effect=check), patch.object(lab05.uuid,'uuid4',return_value=Mock(hex='owned-token')), patch.object(lab05,'summary'):
+            if healthy:lab05.main('activate','lab-05.1')
+            else:
+                with self.assertRaisesRegex(RuntimeError,'baseline failed'):lab05.main('activate','lab-05.1')
+        return calls
+    def test_real_baseline_precedes_variant_injection(self):
+        calls=self.run_activation()
+        self.assertEqual([v for k,v in calls if k=='http'],[200,404])
+        fault=next(i for i,(k,v) in enumerate(calls) if k=='patch' and v[0]=='ingress')
+        first=next(i for i,(k,v) in enumerate(calls) if k=='http')
+        self.assertLess(first,fault)
+        ingress=next(v for k,v in calls if k=='create')
+        self.assertEqual(ingress['spec']['rules'][0]['http']['paths'][0]['backend']['service']['port']['number'],80)
+    def test_bad_baseline_prevents_fault_injection(self):
+        calls=self.run_activation(False)
+        self.assertFalse(any(k=='patch' and v[0]=='ingress' for k,v in calls))
+    def test_restore_uses_saved_scenario_even_from_original_workflow(self):
+        record=dict(RECORD,scenario='lab-05.1');saved={'data':{'recovery.json':json.dumps(record)}}
+        with patch.object(lab05,'read',side_effect=[DEP,SVC]),patch.object(lab05,'optional',side_effect=[saved,ING]),patch.object(lab05,'kubectl'),patch.object(lab05,'patch') as change,patch.object(lab05,'probe'),patch.object(lab05,'check'),patch.object(lab05,'summary'):
+            lab05.main('restore')
+            self.assertEqual(change.call_args.args[2][-1]['path'],'/spec/rules/0/http/paths/0/path')
+            self.assertEqual(change.call_args.args[2][-1]['value'],'/')
+    def test_expected_http_does_not_accept_transport_failure(self):
+        with patch.object(lab05,'kubectl') as cli,patch.object(lab05,'read',return_value={'status':{'phase':'Succeeded'}}):
+            lab05.ingress_http(IMAGE,'internal-lab-123.us-east-1.elb.amazonaws.com',404)
+            script=cli.call_args_list[0].kwargs['obj']['spec']['containers'][0]['command'][-1]
+            self.assertIn('[ "$result" -eq 0 ]',script)
+            self.assertIn('[ "$code" = "404" ]',script)
+
 if __name__=='__main__':unittest.main()

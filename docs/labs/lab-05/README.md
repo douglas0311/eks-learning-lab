@@ -11,5 +11,6 @@ Deliver: observations, commands and results, hypothesis, root cause, proposed re
 - [Concept refresh — read before investigating](concept-refresh.md)
 - [Start, recovery and cleanup](../../simple-test/lab-05-start.md)
 - [Engineering notes](engineering-notes.md)
+- [RCA and additional IAM blocker](rca.md)
 
 The learner-facing notes intentionally contain no root cause or diagnostic command sequence.

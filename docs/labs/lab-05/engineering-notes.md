@@ -27,3 +27,11 @@ Pending investigation. Retest the affected request path and preserve output befo
 ## Learning and assistance
 
 Record any help requested and what it clarified. The aim is stronger independent reasoning, not a zero-help score.
+
+## October 6 update
+
+The guided investigation identified a mismatch between the Ingress backend reference (8080), Service port (80), and the correctly named container destination (`http`, port 80). The discussion distinguished a Service's client-facing port from its targetPort and evaluated the impact of changing an existing client interface.
+
+The restore workflow then reached a second blocker: `FailedDeployModel` with an IAM denial for `wafv2:GetWebACLForResource` on the controller's role. Douglas identified the permission error from Events. Recovery through the ALB has not yet been established. The original "pending" sections above remain placeholders for the full investigator evidence; they are not evidence of a completed recovery.
+
+[Root cause and environment repair](rca.md). The user will run cleanup and teardown after applying the controller IAM repair.
