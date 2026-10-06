@@ -19,7 +19,9 @@ This portfolio records hands-on AWS and Kubernetes work by Douglas García Jimé
 | Lab 02 — CPU scheduling | [Notes](labs/lab-02/engineering-notes.md) | [RCA](labs/lab-02/rca.md) | Cause supported; two healthy application Pods recorded after recovery |
 | Lab 03 — Node scheduling | [Notes](labs/lab-03/engineering-notes.md) | [RCA](labs/lab-03/rca.md) | Cause supported; workload and dashboard HTTP recovery documented |
 | Lab 04 — Internal connectivity | [Engineering notes](labs/lab-04/engineering-notes.md) | [RCA](labs/lab-04/rca.md) | Selector mismatch identified; HTTP recovery documented |
-| Lab 05 — Ingress delivery | [Engineering notes](labs/lab-05/engineering-notes.md) | [RCA](labs/lab-05/rca.md) | Intended cause diagnosed; additional IAM repair prepared |
+| Lab 05 — Ingress delivery | [Engineering notes](labs/lab-05/engineering-notes.md) | [RCA](labs/lab-05/rca.md) | Port mismatch diagnosed; separate IAM blocker documented |
+| Lab 05.1 — Request routing | [Notes](labs/lab-05-1/engineering-notes.md) | [RCA](labs/lab-05-1/rca.md) | Original request returned HTTP 200 after correction |
+| Lab 05.2 — Entry-point regression | [Notes](labs/lab-05-2/engineering-notes.md) | Pending investigation | Prepared; live activation pending |
 | INC-001 — Diagnostic exec denied | [Notes](incidents/INC-001-pods-exec/engineering-notes.md) | [RCA](incidents/INC-001-pods-exec/rca.md) | Cause confirmed; fix published; operator validation pending in source notes |
 
 Read each lab's README for a spoiler-free entry point. Completed RCAs disclose solutions; the open lab does not.
@@ -46,4 +48,6 @@ These English exports mirror the application guides. Markdown remains the editab
 - [Kubernetes walkthrough](exports/simple-test-kubernetes-explained.docx)
 - [EKS egress playbook](exports/eks-egress-playbook.docx)
 
-[Lab 05.1 — independent variant](labs/lab-05-1/README.md): prepared; live activation pending.
+[Lab 05.2 — next iteration](labs/lab-05-2/README.md): prepared; [refreshment](labs/lab-05-2/concept-refresh.md) and [start guide](simple-test/lab-05-2-start.md).
+
+Labs 05 and 05.1 were updated from Douglas's OneNote pages on October 6, 2026. The corresponding pages were organized in English. Lab 05.1 recovery output is attributed to the conversation, separately from the original OneNote observations.

@@ -150,4 +150,68 @@ class Lab51Tests(unittest.TestCase):
             self.assertIn('[ "$result" -eq 0 ]',script)
             self.assertIn('[ "$code" = "404" ]',script)
 
+class Lab52Tests(unittest.TestCase):
+    def activation(self, baseline_failure=False, symptom_failure=False):
+        trace=[]
+        def command(*args, **kwargs):
+            if args[0]=='create':
+                trace.append(('create', kwargs['obj']))
+                return json.dumps(ING)
+            return ''
+        def check(*args, **kwargs):
+            status=kwargs.get('expected',200)
+            trace.append(('http',status))
+            if (status==200 and baseline_failure) or (status==502 and symptom_failure):
+                raise RuntimeError('unverified HTTP')
+        with patch.object(lab05,'read',side_effect=[DEP,{'spec':{'controller':'ingress.k8s.aws/alb'}},SVC,ING]), patch.object(lab05,'optional',return_value=None), patch.object(lab05,'kubectl',side_effect=command), patch.object(lab05,'ready_addresses',return_value=2), patch.object(lab05,'probe'), patch.object(lab05,'save',side_effect=lambda *a,**k:trace.append(('save',dict(a[0])))), patch.object(lab05,'patch',side_effect=lambda *a:trace.append(('patch',a))), patch.object(lab05,'check',side_effect=check), patch.object(lab05.uuid,'uuid4',return_value=Mock(hex='owned-token')), patch.object(lab05,'summary') as summary:
+            if baseline_failure or symptom_failure:
+                with self.assertRaisesRegex(RuntimeError,'unverified'):lab05.main('activate','lab-05.2')
+                summary.assert_not_called()
+            else:lab05.main('activate','lab-05.2')
+        return trace
+
+    def test_baseline_before_injection_and_failed_baseline_blocks_it(self):
+        trace=self.activation()
+        fault=next(i for i,(k,v) in enumerate(trace) if k=='patch' and v[0]=='ingress')
+        self.assertLess(trace.index(('http',200)),fault)
+        self.assertEqual([v for k,v in trace if k=='http'],[200,502])
+        self.assertEqual(next(v for k,v in trace if k=='save')['scenario'],'lab-05.2')
+        created=next(v for k,v in trace if k=='create')
+        self.assertEqual(created['metadata']['annotations']['alb.ingress.kubernetes.io/healthcheck-protocol'],'HTTP')
+        failed=self.activation(baseline_failure=True)
+        self.assertFalse(any(k=='patch' and v[0]=='ingress' for k,v in failed))
+
+    def test_missing_symptom_does_not_report_success(self):
+        self.activation(symptom_failure=True)
+
+    def test_restore_saved_variant_from_any_family_workflow(self):
+        saved={'data':{'recovery.json':json.dumps(dict(RECORD,scenario='lab-05.2'))}}
+        with patch.object(lab05,'read',side_effect=[DEP,SVC]),patch.object(lab05,'optional',side_effect=[saved,ING]),patch.object(lab05,'kubectl'),patch.object(lab05,'patch') as change,patch.object(lab05,'probe'),patch.object(lab05,'check') as check,patch.object(lab05,'summary'):
+            lab05.main('restore')
+            repair=change.call_args.args[2][-1]
+            self.assertEqual(repair,{'op':'add','path':lab05.PROTOCOL_PATH,'value':'HTTP'})
+            check.assert_called_once()
+
+    def test_probe_shell_rejects_transport_and_transient_errors(self):
+        import os
+        import subprocess
+        import tempfile
+        from pathlib import Path
+        with patch.object(lab05,'kubectl') as cli,patch.object(lab05,'read',return_value={'status':{'phase':'Succeeded'}}):
+            lab05.ingress_http(IMAGE,'internal-lab-123.us-east-1.elb.amazonaws.com',502)
+            script=cli.call_args_list[0].kwargs['obj']['spec']['containers'][0]['command'][-1]
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for name,body in {'seq':'echo 1 2 3 4 5', 'sleep':'exit 0'}.items():
+                f=root/name;f.write_text('#!/bin/sh\n'+body+'\n');f.chmod(0o755)
+            env=dict(os.environ,PATH=directory+':'+os.environ['PATH'])
+            for body,expected in [('printf 502; exit 0',0),('printf 502; exit 28',1),('printf 503; exit 0',1)]:
+                f=root/'curl';f.write_text('#!/bin/sh\n'+body+'\n');f.chmod(0o755)
+                result=subprocess.run(['/bin/sh','-c',script],env=env,capture_output=True)
+                self.assertEqual(result.returncode,expected,result.stderr)
+            f=root/'curl';f.write_text('#!/bin/sh\nn=$(cat "'+directory+'/count" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "'+directory+'/count"; if [ "$n" -eq 2 ]; then printf 200; else printf 502; fi\n');f.chmod(0o755)
+            result=subprocess.run(['/bin/sh','-c',script],env=env,capture_output=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual((root/'count').read_text().strip(),'5')
+
 if __name__=='__main__':unittest.main()

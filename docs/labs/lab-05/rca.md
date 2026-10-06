@@ -19,3 +19,7 @@ The repository policy was abbreviated and lacked that integration action. The pe
 For the current environment: run **Repair load balancer controller IAM**, then **Run SRE lab 05 → cleanup**, then **Terraform Decommission**. Cleanup must finish while the controller is available. A retained finalizer or denied operation is a reason to investigate, not to force-delete the object. The user requested teardown, so successful repair need not be followed by a new restore/ALB test before cleanup.
 
 The original scenario was a guided investigation. The learner identified the IAM denial from Events; that unintended preparation defect belongs to the environment, not to the intended exercise.
+
+## Subsequent evidence — October 6
+
+The later Lab 05.1 investigation recorded an ALB hostname and a successful HTTP root request after its separate routing correction. This establishes subsequent end-to-end functionality for that request. It does not supply a missing successful retest of the original Lab 05 restore run. The original recovery-blocker account above is historical; see [Lab 05.1 recovery](../lab-05-1/engineering-notes.md).

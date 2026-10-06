@@ -43,7 +43,7 @@ flowchart LR
 | Lab 02 | CPU requests versus node allocatable capacity | Investigated and recovered in EKS |
 | Lab 03 | Scheduling constraints and correlating events with dashboards | Investigated and recovered in EKS |
 | Lab 04 | Internal application connectivity | Selector mismatch identified; HTTP recovery documented |
-| [Lab 05](docs/labs/lab-05/README.md) | Ingress and load balancer delivery | Cause diagnosed; IAM repair prepared |
+| [Lab 05](docs/labs/lab-05/README.md) | Ingress and load balancer delivery | Cause diagnosed; IAM blocker documented |
 | INC-001 | Kubernetes exec authorization | Diagnosed; correction published, operator verification pending in notes |
 
 Exercises are intended to preserve the investigation experience. The learner-facing guides explain how to start each scenario without giving away its root cause.
@@ -93,3 +93,5 @@ Douglas conducts the lab investigations and develops evidence-backed hypotheses.
 The GitHub project name is independent of existing AWS resource names. See the [naming migration notes](docs/repository-naming.md) before changing repository identity or OIDC trust.
 
 [Lab 05.1 preparation](docs/simple-test/lab-05-1-start.md) includes the current-environment repair/cleanup sequence and the next independent variant.
+
+[Lab 05.1 engineering notes](docs/labs/lab-05-1/engineering-notes.md) record request recovery. [Lab 05.2](docs/labs/lab-05-2/README.md) is prepared with a [refreshment](docs/labs/lab-05-2/concept-refresh.md) and [execution guide](docs/simple-test/lab-05-2-start.md); live validation is pending.

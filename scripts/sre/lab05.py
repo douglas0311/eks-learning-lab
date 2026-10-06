@@ -1,4 +1,15 @@
-"""Controlled Ingress exercise. Maintainer implementation contains spoilers."""
+"""Controlled Ingress exercises. Maintainer implementation contains spoilers.
+
+05.2 changes backend forwarding to HTTPS against NGINX's HTTP-only port.
+The HTTP health check remains independent. A target TLS handshake failure
+should produce ALB 502; activation requires three consecutive real responses,
+not a generic failure or a transition's empty target group. Live acceptance
+is deliberately required before declaring the scenario ready.
+
+References:
+https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.8/guide/ingress/annotations/#backend-protocol
+https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-troubleshooting.html
+"""
 import json
 import re
 import subprocess
@@ -14,6 +25,7 @@ RECOVERY = 'sre-lab-05-recovery'
 MARK = 'sre-lab/active'
 OWNER = 'sre-lab/owner'
 LAB = 'lab-05'
+PROTOCOL_PATH = '/metadata/annotations/alb.ingress.kubernetes.io~1backend-protocol'
 PORT_PATH = '/spec/rules/0/http/paths/0/backend/service/port'
 
 
@@ -29,6 +41,7 @@ def manifest(token, broken=True):
                              'alb.ingress.kubernetes.io/target-type': 'ip',
                              'alb.ingress.kubernetes.io/listen-ports': '[{"HTTP":80}]',
                              'alb.ingress.kubernetes.io/healthcheck-path': '/healthz',
+                             'alb.ingress.kubernetes.io/healthcheck-protocol': 'HTTP',
                              'alb.ingress.kubernetes.io/tags': 'SRELab=lab-05'}},
             'spec': {'ingressClassName': 'alb', 'rules': [{'http': {'paths': [
                 {'path': '/', 'pathType': 'Prefix', 'backend': {'service': {
@@ -74,16 +87,19 @@ def ingress_http(image, host, expected=200):
     if not re.fullmatch(r'internal-[a-zA-Z0-9-]+\.us-east-1\.elb\.amazonaws\.com', host):
         raise RuntimeError('Unexpected internal ALB hostname')
     name = 'sre-lab05-probe-' + uuid.uuid4().hex[:10]
-    if expected not in (200, 404):
+    if expected not in (200, 404, 502):
         raise ValueError('Unsupported expected HTTP status')
     # Distinguish an HTTP response from DNS, TCP, and client-tool failures.
     script = ('command -v curl >/dev/null || exit 44; '
-              'for i in $(seq 1 36); do '
+              'matches=0; for i in $(seq 1 36); do '
               'code=$(curl -sS --connect-timeout 3 --max-time 5 -o /tmp/body '
               '-w "%{http_code}" "http://' + host + '/"); result=$?; '
-              '[ "$result" -eq 0 ] && [ "$code" = "' + str(expected) + '" ] && ' +
+              'printf "HTTP=%s curl_exit=%s\n" "$code" "$result"; '
+              'if [ "$result" -eq 0 ] && [ "$code" = "' + str(expected) + '" ] && ' +
               ('grep -q "simple-test is running" /tmp/body' if expected == 200 else 'true') +
-              ' && exit 0; sleep 5; done; exit 1')
+              '; then matches=$((matches + 1)); else matches=0; fi; '
+              '[ "$matches" -ge ' + ('3' if expected == 502 else '1') +
+              ' ] && exit 0; sleep 5; done; exit 1')
     pod = {'apiVersion': 'v1', 'kind': 'Pod', 'metadata': {'name': name, 'namespace': NS,
            'labels': {'sre-lab/probe': LAB}}, 'spec': {'restartPolicy': 'Never',
            'activeDeadlineSeconds': 390, 'automountServiceAccountToken': False,
@@ -164,7 +180,7 @@ def cleanup():
 
 
 def main(operation, scenario="lab-05"):
-    if scenario not in ("lab-05", "lab-05.1"):
+    if scenario not in ("lab-05", "lab-05.1", "lab-05.2"):
         raise ValueError("Unknown scenario")
     if operation == 'cleanup':
         cleanup()
@@ -214,14 +230,17 @@ def main(operation, scenario="lab-05"):
         created = json.loads(kubectl('create', '-f', '-', '-o', 'json', obj=manifest(record['token'], broken=(scenario == 'lab-05'))))
         record['ingress_uid'] = created['metadata']['uid']
         save(record)
-        if scenario == 'lab-05.1':
+        if scenario in ('lab-05.1', 'lab-05.2'):
             check(image, record)  # Establish real ALB HTTP before fault injection.
             current = read('-n', NS, 'get', 'ingress', NAME)
             owned(current, record)
+            fault = ({'op': 'replace', 'path': '/spec/rules/0/http/paths/0/path', 'value': '/application'}
+                     if scenario == 'lab-05.1' else
+                     {'op': 'add', 'path': PROTOCOL_PATH, 'value': 'HTTPS'})
             patch('ingress', NAME, [
                 {'op': 'test', 'path': '/metadata/resourceVersion', 'value': current['metadata']['resourceVersion']},
-                {'op': 'replace', 'path': '/spec/rules/0/http/paths/0/path', 'value': '/application'}], NS)
-            check(image, record, expected=404)
+                fault], NS)
+            check(image, record, expected=404 if scenario == 'lab-05.1' else 502)
         else:
             wait_symptom(record['ingress_uid'])
         probe(image, healthy=True)
@@ -237,14 +256,18 @@ def main(operation, scenario="lab-05"):
     if service['metadata']['uid'] != record['service_uid']:
         raise RuntimeError('Service replaced; refusing recovery against another Service')
     variant = record.get('scenario', 'lab-05')
-    if variant not in ('lab-05', 'lab-05.1'):
+    if variant not in ('lab-05', 'lab-05.1', 'lab-05.2'):
         raise RuntimeError('Unknown recovery scenario; refusing repair')
     if operation == 'restore':
         repair_path, repair_value = (('/spec/rules/0/http/paths/0/path', '/')
                                      if variant == 'lab-05.1' else (PORT_PATH, {'number': 80}))
+        repair = {'op': 'replace', 'path': repair_path, 'value': repair_value}
+        if variant == 'lab-05.2':
+            # Explicit HTTP is idempotent even if the learner removed the override.
+            repair = {'op': 'add', 'path': PROTOCOL_PATH, 'value': 'HTTP'}
         patch('ingress', NAME, [
             {'op': 'test', 'path': '/metadata/resourceVersion', 'value': ingress['metadata']['resourceVersion']},
-            {'op': 'replace', 'path': repair_path, 'value': repair_value}], NS)
+            repair], NS)
     probe(image, healthy=True)
     check(image, record)
     summary('Keep the recovery record until cleanup. Run cleanup before Terraform Decommission.')

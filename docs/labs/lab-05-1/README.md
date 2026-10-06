@@ -11,3 +11,5 @@ Client scope: inside the cluster/VPC, HTTP, using the hostname published by Ingr
 - [Engineering notes](engineering-notes.md)
 
 No diagnostic sequence is provided. Ask for a guiding question first if you become stuck.
+
+**Completed October 6, 2026:** the investigator recorded recovery of the original request. [RCA — contains the solution](rca.md). Next: [Lab 05.2](../lab-05-2/README.md).
