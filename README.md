@@ -94,4 +94,6 @@ The GitHub project name is independent of existing AWS resource names. See the [
 
 [Lab 05.1 preparation](docs/simple-test/lab-05-1-start.md) includes the current-environment repair/cleanup sequence and the next independent variant.
 
-[Lab 05.1 engineering notes](docs/labs/lab-05-1/engineering-notes.md) record request recovery. [Lab 05.2](docs/labs/lab-05-2/README.md) is prepared with a [refreshment](docs/labs/lab-05-2/concept-refresh.md) and [execution guide](docs/simple-test/lab-05-2-start.md); live validation is pending.
+[Lab 05.1 engineering notes](docs/labs/lab-05-1/engineering-notes.md) record request recovery. [Lab 05.2](docs/labs/lab-05-2/README.md) is complete with request recovery documented.
+
+[Lab 06 — persistent storage](docs/labs/lab-06/README.md) is prepared with a [concept refresh](docs/labs/lab-06/concept-refresh.md) and [start guide](docs/simple-test/lab-06-start.md). Live validation remains pending.
