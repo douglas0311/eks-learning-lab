@@ -39,7 +39,11 @@ Always read status, reason, and message together. A limit-related condition can 
 normal at low demand. Unknown is not the same as zero. Metrics and controller
 status are asynchronous; capture timestamps and allow reconciliation time.
 
-## Questions to ask yourself
+## Review questions — answer after completing the scenario
+
+Use this refresh and the command guide throughout the investigation. These questions
+are for the closing review, not prerequisites for activation. Relate your answers
+to the evidence you collected where possible.
 
 1. Which component measures usage, and which changes the replica count?
 2. Does a working HTTP endpoint prove the autoscaler is healthy?

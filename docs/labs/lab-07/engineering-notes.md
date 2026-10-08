@@ -24,3 +24,10 @@ metric evaluation from demonstrated scaling under load. Do not infer cleanup com
 ## Learning and assistance
 
 Record conceptual clarification, command help, or hints used, and what you investigated independently.
+
+## Closing review
+
+After recovery validation, answer the questions in the [concept refresh](concept-refresh.md).
+Explain which evidence supports each answer and identify any remaining uncertainty.
+References and command guides are allowed throughout; record useful guidance without
+treating reference use as a failure of independence.
