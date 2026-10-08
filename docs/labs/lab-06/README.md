@@ -1,6 +1,6 @@
 # Lab 06 — A storage-dependent workload does not become ready
 
-**Status:** prepared October 7, 2026; live Provision and activation pending.
+**Status:** investigated October 8, 2026; original marker read after recovery. See the [RCA](rca.md). Cleanup completion not yet reported.
 
 A small storage worker previously became ready and retained its data across a Pod replacement. Following a workload configuration change, the worker no longer becomes ready. Investigate why it cannot resume normal operation while preserving its existing data.
 

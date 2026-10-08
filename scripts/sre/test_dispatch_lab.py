@@ -13,6 +13,7 @@ class DispatchTests(unittest.TestCase):
             self.assertEqual(Path(cmd[1]).name, 'lab05.py')
             self.assertEqual(cmd[2:], ['restore', scenario])
         self.assertEqual(Path(dispatch_lab.command('lab-06', 'cleanup')[1]).name, 'lab06.py')
+        self.assertEqual(Path(dispatch_lab.command('lab-07', 'cleanup')[1]).name, 'lab07.py')
 
     def test_unknown_or_unsupported_selection_cannot_execute(self):
         for scenario, op in [('lab-03','cleanup'),('lab-03','check'),('lab-04','cleanup'),('../lab06','activate'),('lab-06','; echo invalid')]:

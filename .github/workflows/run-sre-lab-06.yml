@@ -1,14 +1,15 @@
-name: "SRE labs (current: 06)"
+name: "SRE labs (current: 07)"
 
 on:
   workflow_dispatch:
     inputs:
       scenario:
-        description: "Lab 06 is current; previous labs remain available for recovery or review"
+        description: "Lab 07 is current; previous labs remain available for recovery or review"
         required: true
-        default: lab-06
+        default: lab-07
         type: choice
         options:
+          - lab-07
           - lab-06
           - lab-05.2
           - lab-05.1

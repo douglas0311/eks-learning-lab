@@ -1,6 +1,6 @@
 # Lab 05 — Ingress activation and recovery
 
-> Workflow navigation update: use **SRE labs (current: 06)** and select the scenario named in this guide. The old per-lab workflow names below are historical; see the [archive and operation mapping](../../archive/workflows/README.md).
+> Workflow navigation update: use **SRE labs (current: 07)** and select the scenario named in this guide. The old per-lab workflow names below are historical; see the [archive and operation mapping](../../archive/workflows/README.md).
 
 
 Prepared for October 6, 2026. Douglas runs all workflows. Preparation and offline tests do not establish live AWS success; the first activation must verify its prerequisites and the intended symptom.

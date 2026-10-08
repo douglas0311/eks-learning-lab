@@ -1,6 +1,6 @@
 # Lab 03 Observability and activation
 
-> Workflow navigation update: use **SRE labs (current: 06)** and select the scenario named in this guide. The old per-lab workflow names below are historical; see the [archive and operation mapping](../../archive/workflows/README.md).
+> Workflow navigation update: use **SRE labs (current: 07)** and select the scenario named in this guide. The old per-lab workflow names below are historical; see the [archive and operation mapping](../../archive/workflows/README.md).
 
 
 This controlled exercise concerns node scheduling. It does not simulate a real kubelet outage or physical memory pressure. Investigate Kubernetes state and metrics before opening the scenario code.

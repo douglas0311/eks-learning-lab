@@ -1,6 +1,6 @@
 # Lab 05.1 — Start and cleanup
 
-> Workflow navigation update: use **SRE labs (current: 06)** and select the scenario named in this guide. The old per-lab workflow names below are historical; see the [archive and operation mapping](../../archive/workflows/README.md).
+> Workflow navigation update: use **SRE labs (current: 07)** and select the scenario named in this guide. The old per-lab workflow names below are historical; see the [archive and operation mapping](../../archive/workflows/README.md).
 
 
 ## Finish the current environment first

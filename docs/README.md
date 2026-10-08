@@ -22,7 +22,7 @@ This portfolio records hands-on AWS and Kubernetes work by Douglas García Jimé
 | Lab 05 — Ingress delivery | [Engineering notes](labs/lab-05/engineering-notes.md) | [RCA](labs/lab-05/rca.md) | Port mismatch diagnosed; separate IAM blocker documented |
 | Lab 05.1 — Request routing | [Notes](labs/lab-05-1/engineering-notes.md) | [RCA](labs/lab-05-1/rca.md) | Original request returned HTTP 200 after correction |
 | Lab 05.2 — Entry-point regression | [Notes](labs/lab-05-2/engineering-notes.md) | [RCA](labs/lab-05-2/rca.md) | HTTP 200 and 648 bytes received after restore |
-| Lab 06 — Persistent storage | [Notes](labs/lab-06/engineering-notes.md) | Pending investigation | Prepared; live validation pending |
+| Lab 06 — Persistent storage | [Notes](labs/lab-06/engineering-notes.md) | [RCA](labs/lab-06/rca.md) | Original marker read after recovery |
 | INC-001 — Diagnostic exec denied | [Notes](incidents/INC-001-pods-exec/engineering-notes.md) | [RCA](incidents/INC-001-pods-exec/rca.md) | Cause confirmed; fix published; operator validation pending in source notes |
 
 Read each lab's README for a spoiler-free entry point. Completed RCAs disclose solutions; the open lab does not.
@@ -57,4 +57,6 @@ Labs 05 and 05.1 were updated from Douglas's OneNote pages on October 6, 2026. T
 
 ## Current lab tools
 
-Use **SRE labs (current: 06)** in Actions; `lab-06` is selected by default. Earlier scenario workflows are [archived](../archive/workflows/README.md) and their operations remain available through the same selector. For Lab 06, keep the [command guide and output interpretation](labs/lab-06/command-guide.md) next to the concept refresh.
+Use **SRE labs (current: 07)** in Actions; `lab-07` is selected by default. Earlier scenario workflows are [archived](../archive/workflows/README.md) and their operations remain available through the same selector. For Lab 07, keep the [command guide and output interpretation](labs/lab-07/command-guide.md) next to the concept refresh.
+
+[Lab 07 — Autoscaling](labs/lab-07/README.md) · [Start guide](simple-test/lab-07-start.md) · [Command companion](labs/lab-07/command-guide.md). Lab 06 recovery is documented in its [engineering notes](labs/lab-06/engineering-notes.md) and [RCA](labs/lab-06/rca.md).

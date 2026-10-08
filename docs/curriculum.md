@@ -11,8 +11,8 @@ The original scenario list defines a learning sequence, not a statistical claim 
 | 03 | Node health and scheduling | Scheduling eligibility investigated; actual NotReady and pressure remain future variants |
 | 04 | Internal Service connectivity | Selector mismatch diagnosed; HTTP recovery documented |
 | 05 | Ingress controller and load balancer creation | Lab 05 port mismatch and IAM blocker diagnosed; 05.1 request recovery documented; 05.2 backend protocol mismatch diagnosed and request recovered |
-| 06 | Persistent volumes and mounting | Prepared with real EBS persistence baseline; live validation pending |
-| 07 | Autoscaling expectations and failures | Planned |
+| 06 | Persistent volumes and mounting | Missing PVC reference diagnosed; original persistent marker read after recovery |
+| 07 | Autoscaling expectations and failures | Prepared; live activation and investigation pending |
 | 08 | Kubernetes API connectivity and access | Planned; authorization prerequisite already encountered |
 | 09 | Workload AWS IAM and IRSA access | Planned |
 | 10 | Resource waste and cost investigation | Planned |

@@ -4,10 +4,11 @@ These YAML files are preserved outside `.github/workflows` as historical referen
 
 ## Current entry point
 
-Use **SRE labs (current: 06)** in Actions, on `main`. The default scenario is `lab-06`. Select an older scenario in the same form for recovery or review; there is no need to copy archived YAML back into the active workflow directory.
+Use **SRE labs (current: 07)** in Actions, on `main`. The default scenario is `lab-07`. Select an older scenario in the same form for recovery or review; there is no need to copy archived YAML back into the active workflow directory.
 
 | Scenario | Available operations |
 | --- | --- |
+| lab-07 | activate, restore, check, cleanup |
 | lab-06 | activate, restore, check, cleanup |
 | lab-05 / lab-05.1 / lab-05.2 | activate, restore, check, cleanup |
 | lab-04 | activate, restore, check |

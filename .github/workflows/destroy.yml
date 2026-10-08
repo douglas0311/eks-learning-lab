@@ -106,6 +106,7 @@ jobs:
           aws eks update-kubeconfig --name eks-learning-lab-lab-eks --kubeconfig "$KUBECONFIG"
           python3 scripts/sre/lab05.py cleanup
           python3 scripts/sre/lab06.py cleanup
+          python3 scripts/sre/lab07.py cleanup
 
       - name: Terraform destroy plan
         run: terraform plan -destroy -input=false -lock-timeout=5m -out=destroy.tfplan

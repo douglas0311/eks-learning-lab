@@ -2,7 +2,7 @@
 
 ## Close the previous session
 
-Preserve the Lab 05.2 response and notes. Run **SRE labs (current: 06)** with scenario `lab-05.2` and operation `cleanup`, then **Terraform Decommission**. No cluster is needed overnight to prepare Lab 06. All lifecycle operations are run by Douglas.
+Preserve the Lab 05.2 response and notes. Run **SRE labs (current: 07)** with scenario `lab-05.2` and operation `cleanup`, then **Terraform Decommission**. No cluster is needed overnight to prepare Lab 06. All lifecycle operations are run by Douglas.
 
 ## Start a fresh session from latest main
 
@@ -20,7 +20,7 @@ Preserve the Lab 05.2 response and notes. Run **SRE labs (current: 06)** with sc
    kubectl -n simple-test get pods
    ```
 
-6. Run **SRE labs (current: 06)** with scenario `lab-06` and operation `activate`, using `main`. Wait for green before investigation.
+6. Run **SRE labs (current: 07)** with scenario `lab-06` and operation `activate`, using `main`. Wait for green before investigation.
 7. Read the [problem statement](../labs/lab-06/README.md) and begin your [engineering notes](../labs/lab-06/engineering-notes.md).
 
 If reusing an existing cluster, clean up the prior scenario and run Terraform Provision from latest main to install the new prerequisites. Skip the initial Deploy simple-test job when the application already exists; it intentionally refuses an existing deployment.
@@ -56,4 +56,4 @@ Terraform validation passed without apply. No cluster provisioning, lab activati
 
 [Storage implementation notes](../storage-prerequisites.md) explain prerequisite ownership without revealing the scenario.
 
-Older per-lab workflow definitions are [archived](../../archive/workflows/README.md). The single lab workflow keeps recovery and review available through the scenario selector; Lab 06 is selected by default.
+Older per-lab workflow definitions are [archived](../../archive/workflows/README.md). The single lab workflow keeps recovery and review available through the scenario selector; Lab 07 is selected by default.

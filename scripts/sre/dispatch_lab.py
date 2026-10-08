@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 ROUTES = {
+    'lab-07': ('lab07.py', (), {'activate', 'restore', 'check', 'cleanup'}),
     'lab-03': ('lab03.py', (), {'activate', 'restore'}),
     'lab-04': ('lab04.py', (), {'activate', 'restore', 'check'}),
     'lab-05': ('lab05.py', ('lab-05',), {'activate', 'restore', 'check', 'cleanup'}),
