@@ -45,15 +45,15 @@ output "kubecost_role_arn" {
 
 output "grafana_access" {
   description = "Command to access Grafana locally via port-forward."
-  value       = "kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80"
+  value       = var.enable_monitoring ? "kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80" : null
 }
 
 output "prometheus_access" {
   description = "Command to access Prometheus locally via port-forward."
-  value       = "kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090"
+  value       = var.enable_monitoring ? "kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090" : null
 }
 
 output "kubecost_access" {
   description = "Command to access KubeCost locally via port-forward."
-  value       = "kubectl port-forward -n kubecost svc/kubecost-cost-analyzer 9090:9090"
+  value       = var.enable_monitoring ? "kubectl port-forward -n kubecost svc/kubecost-cost-analyzer 9090:9090" : null
 }

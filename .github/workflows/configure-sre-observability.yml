@@ -62,6 +62,10 @@ jobs:
         run: |
           aws eks update-kubeconfig --name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG"
           kubectl -n simple-test rollout status deployment/simple-test --timeout=60s
+          if ! kubectl -n monitoring get deployment kube-prometheus-stack-grafana; then
+            echo "::error::Monitoring is unavailable. For dashboard labs, run Terraform Provision with enable_monitoring checked first. Lab 07 does not require this workflow."
+            exit 1
+          fi
           kubectl -n monitoring rollout status deployment/kube-prometheus-stack-grafana --timeout=120s
           kubectl apply --dry-run=server -f kubernetes/sre-observability/
           kubectl apply -f kubernetes/sre-observability/

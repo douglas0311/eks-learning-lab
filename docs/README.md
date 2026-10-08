@@ -60,3 +60,5 @@ Labs 05 and 05.1 were updated from Douglas's OneNote pages on October 6, 2026. T
 Use **SRE labs (current: 07)** in Actions; `lab-07` is selected by default. Earlier scenario workflows are [archived](../archive/workflows/README.md) and their operations remain available through the same selector. For Lab 07, keep the [command guide and output interpretation](labs/lab-07/command-guide.md) next to the concept refresh.
 
 [Lab 07 — Autoscaling](labs/lab-07/README.md) · [Start guide](simple-test/lab-07-start.md) · [Command companion](labs/lab-07/command-guide.md). Lab 06 recovery is documented in its [engineering notes](labs/lab-06/engineering-notes.md) and [RCA](labs/lab-06/rca.md).
+
+[Optional monitoring profiles](monitoring-profiles.md): Lab 07 uses Metrics Server without the optional dashboard/cost stack; enable it for sessions needing historical graphs.

@@ -45,3 +45,8 @@ variable "kubecost_version" {
 variable "vpc_id" {
   type = string
 }
+variable "enable_monitoring" {
+  description = "Install the optional Prometheus/Grafana/Alertmanager and Kubecost stack. Metrics Server and networking controllers remain enabled."
+  type        = bool
+  default     = false
+}

@@ -81,7 +81,10 @@ Expect HTTP 200 with the simple-test page in a healthy setup. The first test use
 the local container listener; the second traverses the Service. Neither generates
 sustained load nor proves scale-out. Do not start an unbounded load generator.
 
-## F. What can historical monitoring add?
+## F. Optional: what can historical monitoring add?
+
+Lab 07 omits the monitoring stack by default. The following applies only when
+monitoring has explicitly been enabled for a session.
 
 In Grafana, match namespace/workload filters and the incident time window. Compare
 CPU usage, requested CPU, desired replicas, and available replicas when those

@@ -3,6 +3,8 @@
 # ---------------------------------
 
 resource "kubernetes_namespace" "monitoring" {
+  count = var.enable_monitoring ? 1 : 0
+
   metadata {
     name = "monitoring"
     labels = {
@@ -12,6 +14,8 @@ resource "kubernetes_namespace" "monitoring" {
 }
 
 resource "kubernetes_namespace" "kubecost" {
+  count = var.enable_monitoring ? 1 : 0
+
   metadata {
     name = "kubecost"
     labels = {
@@ -32,7 +36,7 @@ resource "helm_release" "metrics_server" {
   version    = var.metrics_server_version
   namespace  = "kube-system"
 
-  values = [file("${path.root}/kubernetes/metrics-server/values.yaml")]
+  values = [file("${path.module}/../../kubernetes/metrics-server/values.yaml")]
 
   timeout = 300
 }
@@ -72,7 +76,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   version    = var.lb_controller_version
   namespace  = "kube-system"
 
-  values = [templatefile("${path.root}/kubernetes/aws-load-balancer-controller/values.yaml", {
+  values = [templatefile("${path.module}/../../kubernetes/aws-load-balancer-controller/values.yaml", {
     cluster_name = var.cluster_name
     vpc_id       = var.vpc_id
   })]
@@ -93,13 +97,15 @@ resource "helm_release" "aws_load_balancer_controller" {
 # ---------------------------------
 
 resource "helm_release" "kube_prometheus_stack" {
+  count = var.enable_monitoring ? 1 : 0
+
   name       = "kube-prometheus-stack"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "kube-prometheus-stack"
   version    = var.prometheus_stack_version
-  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+  namespace  = kubernetes_namespace.monitoring[0].metadata[0].name
 
-  values = [file("${path.root}/kubernetes/prometheus/values.yaml")]
+  values = [file("${path.module}/../../kubernetes/prometheus/values.yaml")]
 
   # Give Prometheus enough time to pull images on t3.small nodes
   timeout = 600
@@ -112,13 +118,15 @@ resource "helm_release" "kube_prometheus_stack" {
 # ---------------------------------
 
 resource "helm_release" "kubecost" {
+  count = var.enable_monitoring ? 1 : 0
+
   name       = "kubecost"
   repository = "https://kubecost.github.io/cost-analyzer/"
   chart      = "cost-analyzer"
   version    = var.kubecost_version
-  namespace  = kubernetes_namespace.kubecost.metadata[0].name
+  namespace  = kubernetes_namespace.kubecost[0].metadata[0].name
 
-  values = [file("${path.root}/kubernetes/kubecost/values.yaml")]
+  values = [file("${path.module}/../../kubernetes/kubecost/values.yaml")]
 
   timeout = 600
 
@@ -130,6 +138,8 @@ resource "helm_release" "kubecost" {
 # ---------------------------------
 
 data "aws_iam_policy_document" "kubecost_assume_role" {
+  count = var.enable_monitoring ? 1 : 0
+
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
 
@@ -153,8 +163,10 @@ data "aws_iam_policy_document" "kubecost_assume_role" {
 }
 
 resource "aws_iam_role" "kubecost" {
+  count = var.enable_monitoring ? 1 : 0
+
   name               = "${var.cluster_name}-kubecost"
-  assume_role_policy = data.aws_iam_policy_document.kubecost_assume_role.json
+  assume_role_policy = data.aws_iam_policy_document.kubecost_assume_role[0].json
 
   tags = {
     Name = "${var.cluster_name}-kubecost"
@@ -162,12 +174,16 @@ resource "aws_iam_role" "kubecost" {
 }
 
 resource "aws_iam_policy" "kubecost" {
+  count = var.enable_monitoring ? 1 : 0
+
   name        = "${var.cluster_name}-kubecost"
   description = "Allows KubeCost to read AWS Cost Explorer and CloudWatch for cost allocation."
   policy      = file("${path.module}/kubecost-policy.json")
 }
 
 resource "aws_iam_role_policy_attachment" "kubecost" {
-  role       = aws_iam_role.kubecost.name
-  policy_arn = aws_iam_policy.kubecost.arn
+  count = var.enable_monitoring ? 1 : 0
+
+  role       = aws_iam_role.kubecost[0].name
+  policy_arn = aws_iam_policy.kubecost[0].arn
 }

@@ -2,6 +2,12 @@ name: Terraform Provision
 
 on:
   workflow_dispatch:
+    inputs:
+      enable_monitoring:
+        description: "Install monitoring and Kubecost (unchecked removes an existing optional stack)"
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   id-token: write

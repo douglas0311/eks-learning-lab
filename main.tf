@@ -48,6 +48,7 @@ module "observability" {
   oidc_provider_hostpath   = trimprefix(module.eks.cluster_oidc_issuer_url, "https://")
   lb_controller_role_arn   = module.aws_load_balancer_controller_iam.role_arn
   vpc_id                   = module.networking.vpc_id
+  enable_monitoring        = var.enable_monitoring
   prometheus_stack_version = var.prometheus_stack_version
   kubecost_version         = var.kubecost_version
 }

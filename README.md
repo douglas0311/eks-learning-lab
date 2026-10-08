@@ -101,3 +101,5 @@ The GitHub project name is independent of existing AWS resource names. See the [
 SRE scenarios now share one Actions entry: **SRE labs (current: 07)**. Select a scenario and operation there; [older workflow YAML files](archive/workflows/README.md) are archived. [Lab 06 command guide](docs/labs/lab-06/command-guide.md) includes expected observations and interpretation limits.
 
 Current exercise: [Lab 07 — Autoscaling](docs/labs/lab-07/README.md), with a [start guide](docs/simple-test/lab-07-start.md) and [command companion](docs/labs/lab-07/command-guide.md).
+
+[Optional monitoring profiles](docs/monitoring-profiles.md): Lab 07 uses Metrics Server without the optional dashboard/cost stack; enable it for sessions needing historical graphs.

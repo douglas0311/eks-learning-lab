@@ -11,10 +11,10 @@ manually delete infrastructure around an unresolved cleanup failure.
 
 1. Read the [concept refresh](../labs/lab-07/concept-refresh.md) and keep the
    [command companion](../labs/lab-07/command-guide.md) open.
-2. Start a new **Terraform Provision** run from latest `main` and wait for success.
+2. Start a new **Terraform Provision** run from latest `main`, leave `enable_monitoring` unchecked, and wait for success. Metrics Server remains installed.
 3. Run **Deploy simple-test** and wait for success. If reusing an existing healthy
    application, skip this initial-deployment-only workflow.
-4. Run **Configure SRE observability** and wait for success.
+4. Skip **Configure SRE observability** for this exercise. Use HPA status and resource metrics through kubectl.
 5. Refresh local access:
 
    ```bash
