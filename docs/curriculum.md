@@ -17,6 +17,57 @@ The original scenario list defines a learning sequence, not a statistical claim 
 | 09 | Workload AWS IAM and IRSA access | Planned |
 | 10 | Resource waste and cost investigation | Planned |
 
+## Learner-defined outcomes
+
+Expectations clarified by Douglas on October 8, 2026. Evaluate progress against
+these outcomes rather than an assumed goal of expert-level production autonomy.
+
+### Labs 01–10: practical foundations
+
+- Gain hands-on experience with EKS, monitoring, and FinOps.
+- Learn useful commands and navigate containers, Pods, controllers, Services, and infrastructure.
+- Recognize common failure patterns and explain when a diagnostic command is useful and what it establishes.
+- Understand observed state, declarative configuration, and controller reconciliation.
+- Propose evidence-based root cause analyses, corrective actions, and preventive actions.
+- Transfer an existing troubleshooting method to Kubernetes while building component knowledge.
+
+Monitoring must support an explicit investigative question. FinOps is part of
+ongoing decision-making, not only the dedicated cost exercise near the end.
+
+### Labs 11–20: broader incident investigation
+
+- Add the Lambda/API Gateway layer for more realistic user-facing scenarios.
+- Investigate end to end and follow a transaction to the failing boundary.
+- Use CloudWatch evidence, including Lambda logs, alongside Kubernetes evidence.
+- Gain more direct experience with ALB behavior and diagnosis.
+- Use relevant monitoring history to analyze changes and incidents.
+- Revisit weaknesses identified in the first stage, especially network-boundary reasoning, and assess improvement through unfamiliar variants.
+
+The desired outcome after twenty labs is to participate confidently and
+substantively in a technical conversation with an experienced SRE: explain
+architecture, ask precise questions, defend a hypothesis with evidence, discuss
+trade-offs, and acknowledge uncertainty. Completing a lab count is not a claim of
+Kubernetes expertise. Douglas already feels comfortable entering that conversation;
+the next stage should deepen its technical substance.
+
+## Capacity and FinOps decisions belong in the learning loop
+
+Before changing node count, instance size, or other capacity/cost decisions, present
+the observed constraint, realistic alternatives, expected benefit, cost implications,
+and operational trade-offs. Ask Douglas to choose or approve the concrete change
+before implementing or publishing it. A general request to prepare a lab is not
+permission to decide these trade-offs on his behalf.
+
+Use measured constraints (pod slots, requests, allocatable resources, actual usage)
+to distinguish the bottleneck. Compare options such as additional nodes, different
+node sizes, or removing unnecessary workloads when appropriate; do not fabricate
+prices. Let Douglas explain his choice and define the validation criteria.
+
+The October 8 change from two to three nodes solved a capacity prerequisite, but
+missed an opportunity for Douglas to practice the decision. Future changes must
+include this consultation step. No infrastructure change is requested by this
+curriculum update.
+
 ## Preparation
 
 Start with a verified healthy application, persistent Terraform state, working diagnostic access, and a recovery path. Introduce one controlled fault and confirm its symptom. Distinguish scenario behavior from automation failures. A failed workflow is not automatically proof of successful fault injection.
