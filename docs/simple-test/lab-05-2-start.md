@@ -1,5 +1,8 @@
 # Lab 05.2 — Start, investigate, and clean up
 
+> Workflow navigation update: use **SRE labs (current: 06)** and select the scenario named in this guide. The old per-lab workflow names below are historical; see the [archive and operation mapping](../../archive/workflows/README.md).
+
+
 ## Preparation for tomorrow
 
 Read the [refreshment](../labs/lab-05-2/concept-refresh.md). It includes lessons from Labs 05 and 05.1 and the evidence habits to apply. The [problem statement](../labs/lab-05-2/README.md) defines the request to reproduce without revealing the cause.

@@ -25,7 +25,7 @@ Infrastructure needed for ingress, storage, or node autoscaling is added when th
 
 ## Concept refresh before each lab
 
-Provide a short, spoiler-free review of the relevant components, their relationships, terminology, and what common signals do and do not establish. Include optional conceptual self-check questions. Keep the refresh separate from the incident statement, implementation, and diagnostic hints; it must not identify the injected fault or prescribe a troubleshooting sequence. This supports recall without replacing the learner's investigation.
+Provide a short, spoiler-free review of the relevant components, their relationships, terminology, and what common signals do and do not establish. Include optional conceptual self-check questions and a command companion that explains each command's purpose, expected observations, and interpretation limits. Commands provide diagnostic tools, not a mandatory sequence or the injected solution. Keep the refresh separate from the incident statement, implementation, and diagnostic hints; it must not identify the injected fault or prescribe a troubleshooting sequence. This supports recall without replacing the learner's investigation.
 
 ## Evidence and progression
 

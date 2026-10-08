@@ -2,11 +2,11 @@
 
 ## Close the previous session
 
-Preserve the Lab 05.2 response and notes. Run **Run SRE lab 05.2 → cleanup**, then **Terraform Decommission**. No cluster is needed overnight to prepare Lab 06. All lifecycle operations are run by Douglas.
+Preserve the Lab 05.2 response and notes. Run **SRE labs (current: 06)** with scenario `lab-05.2` and operation `cleanup`, then **Terraform Decommission**. No cluster is needed overnight to prepare Lab 06. All lifecycle operations are run by Douglas.
 
 ## Start a fresh session from latest main
 
-1. Read the [storage refreshment](../labs/lab-06/concept-refresh.md).
+1. Read the [storage refreshment](../labs/lab-06/concept-refresh.md) and keep the [command guide](../labs/lab-06/command-guide.md) available.
 2. Run **Terraform Provision**. This now prepares the EBS CSI add-on and its dedicated IAM role in addition to the existing cluster components. Wait for success.
 3. Run **Deploy simple-test**. Its existing ECR image is reused for the small storage worker; no new image build or repository is required for the worker.
 4. Run **Configure SRE observability** and wait for success.
@@ -20,7 +20,7 @@ Preserve the Lab 05.2 response and notes. Run **Run SRE lab 05.2 → cleanup**, 
    kubectl -n simple-test get pods
    ```
 
-6. Run **Run SRE lab 06 → activate**, using `main`. Wait for green before investigation.
+6. Run **SRE labs (current: 06)** with scenario `lab-06` and operation `activate`, using `main`. Wait for green before investigation.
 7. Read the [problem statement](../labs/lab-06/README.md) and begin your [engineering notes](../labs/lab-06/engineering-notes.md).
 
 If reusing an existing cluster, clean up the prior scenario and run Terraform Provision from latest main to install the new prerequisites. Skip the initial Deploy simple-test job when the application already exists; it intentionally refuses an existing deployment.
@@ -55,3 +55,5 @@ Local unit tests and workflow linting cover the preparation; they do not replace
 Terraform validation passed without apply. No cluster provisioning, lab activation, restore, or teardown was run by the assistant. Tomorrow's workflow executions are the live acceptance tests.
 
 [Storage implementation notes](../storage-prerequisites.md) explain prerequisite ownership without revealing the scenario.
+
+Older per-lab workflow definitions are [archived](../../archive/workflows/README.md). The single lab workflow keeps recovery and review available through the scenario selector; Lab 06 is selected by default.

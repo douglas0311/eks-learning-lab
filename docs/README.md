@@ -54,3 +54,7 @@ These English exports mirror the application guides. Markdown remains the editab
 Labs 05 and 05.1 were updated from Douglas's OneNote pages on October 6, 2026. The corresponding pages were organized in English. Lab 05.1 recovery output is attributed to the conversation, separately from the original OneNote observations.
 
 [Lab 06 start guide](simple-test/lab-06-start.md) · [Storage refreshment](labs/lab-06/concept-refresh.md). Lab 05.2 was organized from OneNote and the conversation on October 7, 2026.
+
+## Current lab tools
+
+Use **SRE labs (current: 06)** in Actions; `lab-06` is selected by default. Earlier scenario workflows are [archived](../archive/workflows/README.md) and their operations remain available through the same selector. For Lab 06, keep the [command guide and output interpretation](labs/lab-06/command-guide.md) next to the concept refresh.

@@ -97,3 +97,5 @@ The GitHub project name is independent of existing AWS resource names. See the [
 [Lab 05.1 engineering notes](docs/labs/lab-05-1/engineering-notes.md) record request recovery. [Lab 05.2](docs/labs/lab-05-2/README.md) is complete with request recovery documented.
 
 [Lab 06 — persistent storage](docs/labs/lab-06/README.md) is prepared with a [concept refresh](docs/labs/lab-06/concept-refresh.md) and [start guide](docs/simple-test/lab-06-start.md). Live validation remains pending.
+
+SRE scenarios now share one Actions entry: **SRE labs (current: 06)**. Select a scenario and operation there; [older workflow YAML files](archive/workflows/README.md) are archived. [Lab 06 command guide](docs/labs/lab-06/command-guide.md) includes expected observations and interpretation limits.

@@ -77,27 +77,9 @@ The recovery workflow validates the original marker without writing it again. Cl
 
 Controller operations use the CSI role's AWS permissions. Your diagnostic Kubernetes identity and the workflow's recovery identity have different permissions, as in Lab 05.2.
 
-## Read-only command reference
+## Command companion
 
-Choose commands based on the question you are answering; this is not a required sequence.
-
-```bash
-kubectl -n simple-test get pods -l app=sre-storage -o wide
-kubectl -n simple-test describe deployment sre-storage
-kubectl -n simple-test get deployment sre-storage -o yaml
-kubectl -n simple-test get pvc
-kubectl -n simple-test describe pvc <claim-name>
-kubectl get pv
-kubectl describe pv <volume-name>
-kubectl get storageclass
-kubectl describe storageclass <class-name>
-kubectl -n simple-test describe pod <pod-name>
-kubectl -n simple-test get events --sort-by=.metadata.creationTimestamp
-kubectl -n kube-system get deployment ebs-csi-controller
-kubectl -n kube-system get daemonset ebs-csi-node
-```
-
-Replace placeholders with observed names. Pod logs/exec may be unavailable when no container has started; Events and specifications can still provide evidence. Your operator can inspect resources; recovery is performed through the workflow rather than manual patches.
+Use the [basic command guide](command-guide.md) alongside this refreshment. It groups commands by workload, StorageClass, PVC/PV, Events, CSI/topology, and container access. Each group explains what to observe, what healthy behavior looks like, and what the output cannot prove. You do not need to run every command before forming a hypothesis.
 
 ## Self-check
 

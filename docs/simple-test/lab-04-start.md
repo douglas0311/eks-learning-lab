@@ -1,5 +1,8 @@
 # Lab 04 Internal connectivity activation
 
+> Workflow navigation update: use **SRE labs (current: 06)** and select the scenario named in this guide. The old per-lab workflow names below are historical; see the [archive and operation mapping](../../archive/workflows/README.md).
+
+
 Investigate access to simple-test from inside the cluster using Kubernetes state, observability, and client tests. The exercise creates no application Ingress, external load balancer, or public DNS. Its root cause is left for the investigator.
 
 ## Start from a healthy environment

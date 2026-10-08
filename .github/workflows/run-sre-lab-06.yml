@@ -1,10 +1,22 @@
-name: Run SRE lab 06
+name: "SRE labs (current: 06)"
 
 on:
   workflow_dispatch:
     inputs:
+      scenario:
+        description: "Lab 06 is current; previous labs remain available for recovery or review"
+        required: true
+        default: lab-06
+        type: choice
+        options:
+          - lab-06
+          - lab-05.2
+          - lab-05.1
+          - lab-05
+          - lab-04
+          - lab-03
       operation:
-        description: "Activate lab-06, restore storage, check persistence, or clean up"
+        description: "Choose an operation; lab-03 supports activate/restore, lab-04 also supports check"
         required: true
         type: choice
         options:
@@ -41,6 +53,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate selected lab operation
+        env:
+          LAB_SCENARIO: ${{ inputs.scenario }}
+          LAB_OPERATION: ${{ inputs.operation }}
+        run: python3 scripts/sre/dispatch_lab.py "$LAB_SCENARIO" "$LAB_OPERATION" --validate-only
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -71,9 +89,10 @@ jobs:
       - name: Apply lab operation
         env:
           LAB_OPERATION: ${{ inputs.operation }}
+          LAB_SCENARIO: ${{ inputs.scenario }}
         run: |
           aws eks update-kubeconfig --name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG"
-          python3 scripts/sre/lab06.py "$LAB_OPERATION"
+          python3 scripts/sre/dispatch_lab.py "$LAB_SCENARIO" "$LAB_OPERATION"
 
       - name: Remove temporary kubeconfig
         if: ${{ always() }}
