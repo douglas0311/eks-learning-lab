@@ -111,10 +111,12 @@ resource "aws_eks_node_group" "this" {
   disk_size      = 20
   instance_types = [var.node_instance_type]
 
+  # Three nodes provide pod slots for observability, EBS CSI, and lab workloads.
+  # Two t3.small nodes reached their 22-pod total limit during Provision.
   scaling_config {
-    desired_size = 2
-    min_size     = 2
-    max_size     = 2
+    desired_size = 3
+    min_size     = 3
+    max_size     = 3
   }
 
   update_config {

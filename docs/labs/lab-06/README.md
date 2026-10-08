@@ -17,3 +17,23 @@ Your task is to identify the failing stage, collect evidence, form a testable hy
 Read the [concept refresh](concept-refresh.md), [basic command guide](command-guide.md), and [start guide](../../simple-test/lab-06-start.md). Record observations in the [engineering notes](engineering-notes.md). Implementation and tests contain spoilers and should be reviewed after the investigation.
 
 A green activation means the baseline and intended symptom were verified. If activation fails, preserve the first error rather than assuming the exercise is ready. Ask for a guiding question when a component or event is unfamiliar.
+
+## Environment capacity
+
+The managed node group uses three nodes. With the current `t3.small` configuration,
+each node advertises 11 allocatable pod slots (33 total). Node-level DaemonSets
+also consume slots on every new node, so not all additional slots are available
+to applications. CPU and memory requests remain separate scheduling constraints.
+
+Provision on October 8, 2026 exposed the previous two-node limit: both nodes had
+11 assigned pods after EBS CSI was added. The Prometheus admission patch Job
+could not schedule (`Too many pods`), and Helm timed out in its post-install hook.
+Prometheus also reported insufficient memory on one node. This was an environment
+capacity issue, separate from the intentional storage exercise.
+
+After publishing the capacity change, start a **new Terraform Provision run from
+main**. A re-run of the old failed run uses its old commit. Terraform uses the
+existing S3 state to reconcile the partially provisioned environment. Verify three
+Ready nodes, the monitoring workloads, and the Provision result before deploying
+the application or activating the exercise. The third node adds running cost and
+is removed with the managed node group during Decommission.
