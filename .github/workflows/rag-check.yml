@@ -1,0 +1,33 @@
+name: RAG Checks
+on:
+  pull_request:
+    paths: ['infra/rag/**', 'infra/rag-data/**', 'modules/knowledge_base*/**', 'scripts/rag/**', '.github/workflows/rag-*.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.4
+          terraform_wrapper: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build and test without AWS credentials
+        run: |
+          python -m pip install -r modules/knowledge_base_query/tests/requirements.txt
+          mkdir -p "$RUNNER_TEMP/pdf-layer/python" modules/knowledge_base_lambda/layer
+          python -m pip install pypdf==4.3.1 --target "$RUNNER_TEMP/pdf-layer/python"
+          python -m zipfile -c "$GITHUB_WORKSPACE/modules/knowledge_base_lambda/layer/pypdf-layer.zip" "$RUNNER_TEMP/pdf-layer/python"
+          python -m unittest discover -s modules/knowledge_base_query/tests -v
+          bash -n scripts/rag/smoke.sh
+          for root in infra/rag-data infra/rag; do
+            terraform -chdir="$root" fmt -check
+            terraform -chdir="$root" init -backend=false -input=false -lockfile=readonly
+            terraform -chdir="$root" validate
+          done
