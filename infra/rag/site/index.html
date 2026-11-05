@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Engineering Knowledge Base</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6fa;color:#182436;font:17px/1.6 system-ui,sans-serif}main{max-width:760px;margin:8vh auto;padding:32px;background:white;border:1px solid #dce2eb;border-radius:16px}h1{font-size:29px;margin:0 0 8px}p{color:#536175}label{display:block;font-weight:600;margin:24px 0 8px}textarea{width:100%;min-height:110px;padding:14px;border:1px solid #9caabd;border-radius:8px;font:inherit;resize:vertical}button{background:#174ea6;color:white;border:0;border-radius:8px;padding:12px 25px;margin-top:14px;font:inherit;cursor:pointer}button:disabled{opacity:.6;cursor:wait}#status{min-height:28px}#answer{white-space:pre-wrap}section{border-top:1px solid #e1e6ee;margin-top:24px;padding-top:12px}h2{font-size:20px}@media(max-width:600px){main{margin:20px 12px;padding:22px}}
+</style>
+</head>
+<body><main>
+<h1>Engineering Knowledge Base</h1><p>Ask a question about the uploaded engineering notes.</p>
+<form id="query"><label for="question">Your question</label><textarea id="question" name="question" required maxlength="20000">Why did the additional pods remain in Pending state?</textarea><button id="ask" type="submit">Ask</button></form>
+<p id="status" role="status" aria-live="polite"></p><section id="result" hidden><h2>Answer</h2><div id="answer"></div></section>
+<section id="evidence" hidden><h2>Retrieved evidence</h2><p>Cosine distance: lower means closer, not confidence. Retrieved text is evidence to inspect, not a guarantee that the answer is correct.</p><div id="sources"></div></section><details><summary>Request diagnostics</summary><pre id="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></details></main><script>
+const form=document.querySelector('#query'),button=document.querySelector('#ask'),status=document.querySelector('#status'),answer=document.querySelector('#answer'),result=document.querySelector('#result');
+const evidence=document.querySelector('#evidence'),sources=document.querySelector('#sources'),diagnostics=document.querySelector('#diagnostics');
+form.addEventListener('submit',async(event)=>{
+ event.preventDefault();const question=document.querySelector('#question').value.trim();
+ if(!question){status.textContent='Enter a question first.';return;}
+ button.disabled=true;status.textContent='Searching the knowledge base…';result.hidden=true;evidence.hidden=true;answer.textContent='';sources.replaceChildren();diagnostics.textContent='';
+ const started=performance.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
+ try {
+  const response=await fetch('/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question}),signal:controller.signal});
+  const raw=await response.text();let data;
+  try{data=JSON.parse(raw);}catch{throw new Error('HTTP '+response.status+': the server returned a non-JSON response. Inspect Network.');}
+  diagnostics.textContent=JSON.stringify({http_status:response.status,elapsed_ms:Math.round(performance.now()-started),request_id:data.request_id||response.headers.get('x-amzn-requestid'),model:data.model_used,generation_status:data.generation_status,error:data.error,count:data.count},null,2);
+  if(Array.isArray(data.results)){
+   data.results.forEach((item,i)=>{const block=document.createElement('details'),title=document.createElement('summary'),text=document.createElement('pre');const m=item.metadata||{};
+    title.textContent='['+(i+1)+'] '+(m.document_name||m.source_key||item.key||'Source')+' — distance: '+item.distance;
+    text.style.whiteSpace='pre-wrap';text.style.overflowWrap='anywhere';text.textContent=JSON.stringify({source_bucket:m.source_bucket,source_key:m.source_key,chunk_index:m.chunk_index},null,2)+'\n\n'+(m.chunk_text||'');
+    block.append(title,text);sources.append(block);});evidence.hidden=data.results.length===0;
+  }
+  if(!response.ok||data.statusCode!==200)throw new Error(data.error?.message||data.message||'HTTP '+response.status+': request failed.');
+  if(typeof data.answer!=='string')throw new Error('The server returned an unexpected response.');
+  answer.textContent=data.answer;result.hidden=false;
+  status.textContent=data.generation_status==='truncated'?'Answer incomplete: output token limit reached.':data.generation_status==='skipped_empty_context'?'No context found; generation was skipped.':'Answer ready. Review the supporting evidence.';
+ }catch(error){status.textContent=error.name==='AbortError'?'Request timed out. It may still be running on the server; inspect logs before retrying.':error.message;}
+ finally{clearTimeout(timer);button.disabled=false;}
+});
+</script></body></html>

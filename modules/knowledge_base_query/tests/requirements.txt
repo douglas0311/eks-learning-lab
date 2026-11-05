@@ -1,0 +1,3 @@
+# Local contract tests only. Lambda uses the managed runtime SDK, as ingestion does.
+boto3==1.43.36
+botocore==1.43.100

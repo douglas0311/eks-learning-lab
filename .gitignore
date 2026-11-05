@@ -29,3 +29,10 @@ __pycache__/
 .kiro/
 OutputTxts/
 *.log
+
+# RAG generated packages and local validation scratch
+modules/knowledge_base_lambda/layer/
+modules/knowledge_base_lambda/tfplan.txt
+modules/knowledge_base*/function/*.zip
+infra/rag-plan-check/
+*.tfplan

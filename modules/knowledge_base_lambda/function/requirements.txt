@@ -1,0 +1,4 @@
+# Phase 4 Lambda dependencies
+# pypdf is pure-Python — no native binaries required, works in Lambda
+# without a custom build environment.
+pypdf==4.3.1

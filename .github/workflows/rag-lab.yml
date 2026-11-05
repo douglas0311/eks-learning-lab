@@ -1,0 +1,104 @@
+name: RAG Lab
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'plan, deploy (includes smoke test), or destroy runtime (preserves source documents)'
+        type: choice
+        options: [plan, deploy, destroy]
+        default: plan
+        required: true
+      confirm_destroy:
+        description: 'For destroy, type rag-interview'
+        type: string
+        default: ''
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: terraform-rag-interview
+  cancel-in-progress: false
+env:
+  AWS_REGION: us-east-1
+  AWS_PAGER: ''
+  TF_IN_AUTOMATION: 'true'
+  TF_INPUT: 'false'
+  STATE_BUCKET: douglas-sre-s3-terraform-state
+jobs:
+  rag:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.4
+          terraform_wrapper: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate input
+        env:
+          ACTION: ${{ inputs.action }}
+          CONFIRM: ${{ inputs.confirm_destroy }}
+        run: |
+          case "$ACTION" in plan|deploy) ;; destroy) test "$CONFIRM" = rag-interview ;; *) exit 1 ;; esac
+      - name: Build PDF layer and run offline tests
+        run: |
+          python -m pip install boto3==1.43.36 reportlab==4.4.3
+          mkdir -p "$RUNNER_TEMP/pdf-layer/python" modules/knowledge_base_lambda/layer
+          python -m pip install pypdf==4.3.1 --target "$RUNNER_TEMP/pdf-layer/python"
+          python -m zipfile -c "$GITHUB_WORKSPACE/modules/knowledge_base_lambda/layer/pypdf-layer.zip" "$RUNNER_TEMP/pdf-layer/python"
+          python -m unittest discover -s modules/knowledge_base_query/tests -v
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::490224159848:role/TerraformSRELabGitHubActionsRole
+          aws-region: us-east-1
+          role-duration-seconds: 3600
+      - name: Verify account and existing backend
+        run: |
+          test "$(aws sts get-caller-identity --query Account --output text)" = 490224159848
+          test "$(aws s3api get-bucket-versioning --bucket "$STATE_BUCKET" --query Status --output text)" = Enabled
+      - name: Prepare persistent source bucket
+        if: inputs.action != 'destroy'
+        env:
+          ACTION: ${{ inputs.action }}
+        run: |
+          terraform -chdir=infra/rag-data init -input=false -lockfile=readonly
+          terraform -chdir=infra/rag-data validate
+          terraform -chdir=infra/rag-data plan -lock-timeout=5m -out=data.tfplan
+          if [ "$ACTION" = deploy ]; then terraform -chdir=infra/rag-data apply -lock-timeout=5m data.tfplan; fi
+      - name: Validate runtime configuration
+        run: |
+          terraform -chdir=infra/rag fmt -check
+          terraform -chdir=infra/rag init -input=false -lockfile=readonly
+          terraform -chdir=infra/rag validate
+      - name: Plan or apply runtime
+        if: inputs.action != 'destroy'
+        env:
+          ACTION: ${{ inputs.action }}
+        run: |
+          terraform -chdir=infra/rag plan -lock-timeout=5m -out=runtime.tfplan
+          if [ "$ACTION" = deploy ]; then terraform -chdir=infra/rag apply -lock-timeout=5m runtime.tfplan; fi
+      - name: End-to-end smoke test
+        if: inputs.action == 'deploy'
+        run: bash scripts/rag/smoke.sh
+      - name: Destroy runtime only
+        if: inputs.action == 'destroy'
+        run: |
+          aws s3api head-object --bucket "$STATE_BUCKET" --key rag-interview/terraform.tfstate > /dev/null
+          terraform -chdir=infra/rag plan -destroy -lock-timeout=5m -out=destroy.tfplan
+          terraform -chdir=infra/rag apply -lock-timeout=5m destroy.tfplan
+          test "$(terraform -chdir=infra/rag state list | wc -l | tr -d ' ')" = 0
+      - name: Preserve recovery state and report
+        if: always()
+        env:
+          ACTION: ${{ inputs.action }}
+        run: |
+          for root in rag-data rag; do
+            if [ -s "infra/$root/errored.tfstate" ]; then
+              aws s3 cp "infra/$root/errored.tfstate" "s3://$STATE_BUCKET/rag-interview/recovery/$GITHUB_RUN_ID/$root.tfstate" --sse AES256 --only-show-errors
+            fi
+          done
+          echo "Action: $ACTION. Inspect every step: a failed smoke test may leave deployed resources. Run destroy manually after investigation. Source documents and backend state are preserved." >> "$GITHUB_STEP_SUMMARY"

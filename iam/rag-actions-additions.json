@@ -1,0 +1,229 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "StateObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::douglas-sre-s3-terraform-state/rag-interview/*"
+      ]
+    },
+    {
+      "Sid": "StateLocks",
+      "Effect": "Allow",
+      "Action": [
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::douglas-sre-s3-terraform-state/rag-interview/*.tflock"
+      ]
+    },
+    {
+      "Sid": "LabBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetBucketTagging",
+        "s3:PutBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketVersioning",
+        "s3:GetEncryptionConfiguration",
+        "s3:PutEncryptionConfiguration",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:GetBucketPolicy",
+        "s3:PutBucketPolicy",
+        "s3:DeleteBucketPolicy",
+        "s3:GetBucketPolicyStatus",
+        "s3:GetBucketNotification",
+        "s3:PutBucketNotification",
+        "s3:GetBucketAcl",
+        "s3:GetBucketCORS",
+        "s3:GetBucketWebsite",
+        "s3:GetBucketLogging",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketRequestPayment",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketOwnershipControls"
+      ],
+      "Resource": [
+        "arn:aws:s3:::rag-interview-lab-knowledge-source",
+        "arn:aws:s3:::rag-interview-lab-web-490224159848"
+      ]
+    },
+    {
+      "Sid": "LabObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::rag-interview-lab-knowledge-source/*",
+        "arn:aws:s3:::rag-interview-lab-web-490224159848/*"
+      ]
+    },
+    {
+      "Sid": "LabLambda",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:DeleteFunction",
+        "lambda:ListVersionsByFunction",
+        "lambda:GetPolicy",
+        "lambda:GetFunctionCodeSigningConfig",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:TagResource",
+        "lambda:UntagResource",
+        "lambda:ListTags",
+        "lambda:InvokeFunction"
+      ],
+      "Resource": [
+        "arn:aws:lambda:us-east-1:490224159848:function:rag-interview-lab-*"
+      ]
+    },
+    {
+      "Sid": "LabLayer",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:PublishLayerVersion",
+        "lambda:GetLayerVersion",
+        "lambda:DeleteLayerVersion",
+        "lambda:ListLayerVersions"
+      ],
+      "Resource": [
+        "arn:aws:lambda:us-east-1:490224159848:layer:rag-interview-lab-ingestor-pypdf",
+        "arn:aws:lambda:us-east-1:490224159848:layer:rag-interview-lab-ingestor-pypdf:*"
+      ]
+    },
+    {
+      "Sid": "LabLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DeleteRetentionPolicy",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:ListTagsForResource",
+        "logs:TagLogGroup",
+        "logs:UntagLogGroup",
+        "logs:ListTagsLogGroup",
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents",
+        "logs:FilterLogEvents"
+      ],
+      "Resource": [
+        "arn:aws:logs:us-east-1:490224159848:log-group:/aws/lambda/rag-interview-lab-*"
+      ]
+    },
+    {
+      "Sid": "DescribeLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Sid": "Vectors",
+      "Effect": "Allow",
+      "Action": [
+        "s3vectors:CreateVectorBucket",
+        "s3vectors:GetVectorBucket",
+        "s3vectors:DeleteVectorBucket",
+        "s3vectors:ListIndexes",
+        "s3vectors:CreateIndex",
+        "s3vectors:GetIndex",
+        "s3vectors:DeleteIndex",
+        "s3vectors:ListVectors",
+        "s3vectors:DeleteVectors",
+        "s3vectors:TagResource",
+        "s3vectors:UntagResource",
+        "s3vectors:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:s3vectors:us-east-1:490224159848:bucket/rag-interview-lab-vectors",
+        "arn:aws:s3vectors:us-east-1:490224159848:bucket/rag-interview-lab-vectors/index/*"
+      ]
+    },
+    {
+      "Sid": "CloudFrontCreateAndRead",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateDistribution",
+        "cloudfront:CreateOriginAccessControl",
+        "cloudfront:ListCachePolicies",
+        "cloudfront:GetCachePolicy",
+        "cloudfront:ListOriginRequestPolicies",
+        "cloudfront:GetOriginRequestPolicy",
+        "cloudfront:ListDistributions"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Sid": "CloudFrontLifecycle",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:GetDistribution",
+        "cloudfront:GetDistributionConfig",
+        "cloudfront:UpdateDistribution",
+        "cloudfront:DeleteDistribution",
+        "cloudfront:TagResource",
+        "cloudfront:UntagResource",
+        "cloudfront:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:cloudfront::490224159848:distribution/*"
+      ]
+    },
+    {
+      "Sid": "OriginAccessLifecycle",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:GetOriginAccessControl",
+        "cloudfront:GetOriginAccessControlConfig",
+        "cloudfront:UpdateOriginAccessControl",
+        "cloudfront:DeleteOriginAccessControl"
+      ],
+      "Resource": [
+        "arn:aws:cloudfront::490224159848:origin-access-control/*"
+      ]
+    },
+    {
+      "Sid": "RegionalAPIs",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:PATCH",
+        "apigateway:DELETE"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:us-east-1::/restapis",
+        "arn:aws:apigateway:us-east-1::/restapis/*",
+        "arn:aws:apigateway:us-east-1::/tags/*"
+      ]
+    }
+  ]
+}
