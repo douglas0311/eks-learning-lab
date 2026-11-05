@@ -225,6 +225,18 @@
         "arn:aws:apigateway:us-east-1::/restapis/*",
         "arn:aws:apigateway:us-east-1::/tags/*"
       ]
+    },
+    {
+      "Sid": "WebObjectTags",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObjectTagging",
+        "s3:GetObjectTagging",
+        "s3:DeleteObjectTagging"
+      ],
+      "Resource": [
+        "arn:aws:s3:::rag-interview-lab-web-490224159848/*"
+      ]
     }
   ]
 }
