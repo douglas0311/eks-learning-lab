@@ -6,7 +6,10 @@ import tempfile
 
 role='arn:aws:iam::490224159848:role/TerraformSRELabGitHubActionsRole'
 policy=Path('iam/rag-actions-additions.json').read_text()
-cases=[('s3:GetReplicationConfiguration','arn:aws:s3:::rag-interview-lab-knowledge-source'),
+cases=[('s3:PutObjectTagging','arn:aws:s3:::rag-interview-lab-web-490224159848/index.html'),
+ ('s3:GetObjectTagging','arn:aws:s3:::rag-interview-lab-web-490224159848/index.html'),
+ ('s3:DeleteObjectTagging','arn:aws:s3:::rag-interview-lab-web-490224159848/index.html'),
+ ('s3:GetReplicationConfiguration','arn:aws:s3:::rag-interview-lab-knowledge-source'),
  ('lambda:CreateFunction','arn:aws:lambda:us-east-1:490224159848:function:rag-interview-lab-query'),
  ('s3vectors:CreateVectorBucket','arn:aws:s3vectors:us-east-1:490224159848:bucket/rag-interview-lab-vectors'),
  ('s3:PutObject','arn:aws:s3:::douglas-sre-s3-terraform-state/rag-interview/terraform.tfstate'),
