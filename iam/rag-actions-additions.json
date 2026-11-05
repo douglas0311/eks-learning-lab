@@ -52,7 +52,8 @@
         "s3:GetBucketObjectLockConfiguration",
         "s3:GetBucketRequestPayment",
         "s3:GetAccelerateConfiguration",
-        "s3:GetBucketOwnershipControls"
+        "s3:GetBucketOwnershipControls",
+        "s3:GetReplicationConfiguration"
       ],
       "Resource": [
         "arn:aws:s3:::rag-interview-lab-knowledge-source",

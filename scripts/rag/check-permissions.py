@@ -6,7 +6,8 @@ import tempfile
 
 role='arn:aws:iam::490224159848:role/TerraformSRELabGitHubActionsRole'
 policy=Path('iam/rag-actions-additions.json').read_text()
-cases=[('lambda:CreateFunction','arn:aws:lambda:us-east-1:490224159848:function:rag-interview-lab-query'),
+cases=[('s3:GetReplicationConfiguration','arn:aws:s3:::rag-interview-lab-knowledge-source'),
+ ('lambda:CreateFunction','arn:aws:lambda:us-east-1:490224159848:function:rag-interview-lab-query'),
  ('s3vectors:CreateVectorBucket','arn:aws:s3vectors:us-east-1:490224159848:bucket/rag-interview-lab-vectors'),
  ('s3:PutObject','arn:aws:s3:::douglas-sre-s3-terraform-state/rag-interview/terraform.tfstate'),
  ('s3:DeleteObject','arn:aws:s3:::douglas-sre-s3-terraform-state/rag-interview/terraform.tfstate.tflock'),
